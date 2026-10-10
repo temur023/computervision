@@ -10,6 +10,9 @@ export default async function data(root) {
   const scanStage = sp && Object.entries(sp.stages).find(([k]) => k.startsWith('Scan'))?.[1];
   const fuseStage = sp && Object.entries(sp.stages).find(([k]) => k.startsWith('Guardian'))?.[1];
   const pending = 'runs when training finishes';
+  const cgr = m.conflict_v2xsim;
+  const inc = await api('/api/v1/guardian/incident').then(r => (r.ready ? r : null)).catch(() => null);
+  const inc100 = inc?.counterfactual?.scenarios?.find(x => x.range_m === 100);
 
   // The claims ledger: one row per number shown anywhere on the site.
   const claims = [
@@ -18,6 +21,15 @@ export default async function data(root) {
     ['Guardian', 'Road users in view known to the car', o && `${o['recall_fused_%']}%`, o && `${o.gt_objects_in_fov.toLocaleString('en')} object-frames`, o && `own camera: ${o['recall_single_camera_%']}%`, 'benchmarks/coop_v2xsim.py'],
     ['Guardian', 'Median position error', o && `${o.loc_err_fused_m_median} m`, o && `fused objects · p90 ${o.loc_err_fused_m_p90} m`, o && `own camera: ${o.loc_err_single_m_median} m`, 'benchmarks/coop_v2xsim.py'],
     ['Guardian', 'Alerts that sit on a real road user', o && `${o['alert_precision_%']}%`, o && `${o.alerts} alerts`, '', 'benchmarks/coop_v2xsim.py'],
+    ...(cgr ? [
+      ['CrossGuard', 'Prediction error 2 s ahead (median)', `${cgr.prediction_error_m_median['2s'].ours} m`, `V2X-Sim · ${cgr.prediction_error_m_median['2s'].n} predictions, real perception`, `constant velocity: ${cgr.prediction_error_m_median['2s'].cv} m`, 'benchmarks/conflict_v2xsim.py'],
+      ['CrossGuard', '"Safe to start?" check, prediction logic', `AUROC ${cgr.start_check_prediction_only.auroc}`, `${cgr.start_check_prediction_only.positives} dangerous starts in ${cgr.start_check_prediction_only.checks.toLocaleString('en')} checks, ground-truth tracks`, `warns on ${cgr.start_check_prediction_only.caution_or_high['recall_%']}% of them`, 'benchmarks/conflict_v2xsim.py'],
+      ['CrossGuard', '"Safe to start?" check, end to end', `AUROC ${cgr.start_check.auroc}`, `same checks on our perception: ${cgr.start_check.positives_not_perceived} of ${cgr.start_check.positives} dangerous road users not localised within 3 m`, 'limited by distant cross traffic', 'benchmarks/conflict_v2xsim.py'],
+    ] : []),
+    ...(inc ? [
+      ['Real case', 'Motorcycle visible from the dashcam car before impact', `${inc.motorcycle.visible_s} s`, 'Tashkent crossing, frame by frame (measured)', '', 'swarmsight/incident.py'],
+      ['Real case', 'CrossGuard warning with a crossing camera (100 m view)', inc100?.lead_s != null ? `${inc100.lead_s} s` : null, 'reconstruction: estimated speeds, stated assumptions', inc100?.braking?.[0] ? (inc100.braking[0].avoided ? `car stops ${inc100.braking[0].clear_m} m short (1 s reaction)` : 'too late') : '', 'swarmsight/incident.py'],
+    ] : []),
     ['Road', 'Road-damage detection, mAP@0.5', rd && rd.test.map50.toFixed(3), rd ? `RDD2022 · ${rd.n_test_images.toLocaleString('en')} held-out images, 6 countries` : pending, '', 'training/eval_road_damage.py'],
     ['Road', 'Tashkent streets, image-level AP', tk && tk.ap_image.toFixed(2), tk ? `${tk.n_images} images labelled by us` : pending, tk && `random ranking: ${(tk.n_positive / tk.n_images).toFixed(2)}`, 'training/eval_tashkent.py'],
     ['Speed', 'One frame, both detectors, CPU', scanStage && `${scanStage.p50} ms`, sp ? esc(sp.hardware.split(' · ')[0]) : 'benchmark pending', scanStage && `p95 ${scanStage.p95} ms`, 'benchmarks/speed_cost.py'],
@@ -165,7 +177,8 @@ function fig(v, k, src) {
 
 function sizeOf(d) {
   const u = d.used;
-  if (!u) return 'weights only';
+  if (!u) return d.id === 'coco' ? 'weights only' : 'map tiles';
+  if (u.frames) return `${u.frames} frames`;
   if (u.train != null || u.test != null) {
     const parts = [u.train && `${u.train.toLocaleString('en')} train`, u.val && `${u.val} val`, u.test && `${u.test.toLocaleString('en')} test`].filter(Boolean);
     if (u.collected) parts.push(`${u.collected.toLocaleString('en')} collected`);

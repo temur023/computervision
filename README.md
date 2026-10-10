@@ -19,11 +19,11 @@ Mode: **Startup** · Track: Computer Vision · Partners in scope: Yandex (map an
 
 | Module | Input | Output | Stage |
 |---|---|---|---|
-| **01 Guardian**: cooperative perception | frames from 2+ cameras that see the same area | fused road users on a metric ground plane; for each camera: *visible / occluded by what / missed / out of view*, alerts with source, age, TTL and uncertainty | research core |
+| **01 Guardian**: cooperative perception + **CrossGuard** conflict prediction | frames from 2+ cameras that see the same area (or one calibrated camera) | fused road users on a metric ground plane; for each camera: *visible / occluded by what / missed / out of view*; predicted paths, conflict point, time to conflict and the time gap between arrivals; a warning with a reason and an action, delivered to a phone, a Bluetooth device or a V2X unit | research core |
 | **02 Road Intelligence**: verified road events | any road photo or video, or a live phone camera | potholes and cracks, tracked across frames, then merged by the trust engine into events: candidate → corroborated → verified, served to partners as GeoJSON | first revenue, pilot |
 | **03 ChargePulse**: EV bay occupancy | a camera over a charging area, plus bay polygons | free / occupied per bay with timestamps and utilisation. Visual occupancy only, never "charging" | add-on |
 
-Every input is processed live on our server (ONNX Runtime, CPU). Nothing is pre-computed or hard-coded.
+Every result is computed by our server (ONNX Runtime, CPU) or by a script in this repository. Nothing is hard-coded.
 
 ## Measured results
 
@@ -42,6 +42,27 @@ All numbers come from scripts in this repository, on data the models did not see
 
 "Occluded" ground truth is computed by us per camera from the dataset's semantic segmentation and depth maps
 (fewer than 400 depth-consistent object pixels visible). That label is not part of the dataset.
+
+**CrossGuard, V2X-Sim 2.0, same scene, end to end on our perception** · `python -m benchmarks.conflict_v2xsim`
+
+| Metric | CrossGuard | Baseline |
+|---|---:|---:|
+| Median prediction error 1 s ahead (moving road users) | 1.33 m | constant velocity 1.38 m · standing still 2.52 m |
+| … 2 s ahead | 2.91 m | 3.24 m · 4.55 m |
+| … 3 s ahead | 5.2 m | 5.89 m · 8.22 m |
+| "Safe to start?" check for a waiting car, prediction logic on ground-truth tracks | AUROC 0.988 · warns on 96.4 % of 55 dangerous starts | |
+| The same check end to end on our perception | AUROC 0.634 | 34 of 55 dangerous road users were not localised within 3 m (distant cross traffic) |
+
+A dangerous start is labelled from the simulator: had the waiting car started (2 m/s², straight on), it would have come
+within 0.5 m of that road user's actual position within 6 s. The gap between the two rows is perception, not
+prediction: localising cross traffic 30+ m away is the bottleneck, which is what more cameras fix.
+
+**Real case, Tashkent crossing (dashcam)** · `swarmsight/incident.py`, *Guardian → Real crash · Tashkent*. From the
+dashcam car the motorcycle is visible for 0.38 s before impact (measured frame by frame), less than any driver's
+reaction time. The reconstruction (car ahead tracked by our detector, our car on GPS, the motorcycle annotated by us,
+speed ~130 km/h ±20 %) feeds CrossGuard as a camera at the crossing would have: with 100 m of the cross street in view
+it warns about 2 s before impact, and a driver reacting in 1.0 s stops short of the motorcycle's path; with 60 m it
+is too late. These are reconstruction numbers with stated assumptions, shown as such on the page.
 
 **Road damage**: the RDD2022 held-out test split (6 countries) and our Tashkent test set (image level). See
 `benchmarks/results/road_damage_eval.json` and `benchmarks/results/tashkent_eval.json`. The site shows the current
@@ -70,6 +91,9 @@ camera frame ─► detect (YOLO11n road users · our YOLO11n road damage, ONNX 
 | `swarmsight/tracker.py` | ByteTrack-style tracker, monocular time-to-contact from box expansion |
 | `swarmsight/geometry.py` | ground homographies, focal length and pose from 4 clicked points, uncertainty propagation, ghost boxes |
 | `swarmsight/guardian.py` | cooperative fusion and occlusion reasoning |
+| `swarmsight/conflict.py` | CrossGuard: motion hypotheses, sampled futures, conflict probability, time gap, risk levels, explanations |
+| `swarmsight/incident.py` | reconstruction of the real dashcam case and the crossing-camera counterfactual |
+| `swarmsight/alerts.py` | warning formats: 16-byte Bluetooth frame, ETSI DENM content, GPX |
 | `swarmsight/trust.py`, `store.py` | road-event trust engine and SQLite persistence |
 | `swarmsight/pipeline.py` | single-camera Scan pipeline (image, video, live) |
 | `swarmsight/chargepulse.py` | EV bay occupancy with hysteresis |
@@ -105,6 +129,8 @@ the anonymised Tashkent test images are in `datasets/tashkent/`.
 * **Any road photo or video**: *Road Intelligence → Scan*. Upload, or use *Live camera* on a phone. Add a location
   (photo GPS is read automatically, or use device GPS, or click the map) to create a road event, then see it under
   *Events & moderation*.
+* **A real crash**: *Guardian → Real crash · Tashkent*. Play it, then turn on *Crossing camera* and compare 60 / 100 /
+  150 m. Open the *Phone* link on a phone first: it beeps when the warning goes out.
 * **Two views of one scene**: *Guardian → Your two videos*. Tap the same 4 ground points in both, enter the rectangle
   size and fuse. *Guardian → Two phones, live* does the same with two phones in one room.
 * **A parking or charging area**: *ChargePulse*. Draw the bays and analyse.
@@ -128,6 +154,12 @@ python training/eval_tashkent.py --images data/tashkent/images
 # Guardian benchmark and demo scene (V2X-Sim 2.0 mini, Apache-2.0, ~6 GB)
 python -m benchmarks.coop_v2xsim --root data/v2x_sim_mini
 python -m benchmarks.export_v2xsim_demo --root data/v2x_sim_mini
+
+# CrossGuard benchmark (same V2X-Sim data)
+python -m benchmarks.conflict_v2xsim --root data/v2x_sim_mini
+
+# Real case frames from the team's dashcam clip (the clip itself is not redistributed)
+python -m benchmarks.build_incident --video clip.mp4
 
 # Speed and cost on your hardware
 python -m benchmarks.speed_cost --rdd data/rdd_800/images/test
@@ -165,6 +197,9 @@ Interactive reference at `/docs`. Main endpoints:
 | GET | `/api/v1/road-events?status=verified&format=geojson` | partner feed |
 | POST/GET | `/api/v1/chargepulse/analyze`, `/api/v1/charger-observations` | bay occupancy |
 | GET/PUT | `/api/v1/labels/tashkent[/{id}]`, `/api/v1/labels/tashkent/export` | human review of our Tashkent labels |
+| GET | `/api/v1/guardian/incident` | the real dashcam case, reconstructed on this server |
+| POST / WS | `/api/v1/alerts/{channel}` / `/ws/alerts/{channel}` | publish a warning / receive it (JSON + Bluetooth frame + DENM content) |
+| GET | `/api/v1/road-events/export.gpx` | verified road hazards for navigators and radar-detector databases |
 | GET | `/api/v1/health`, `/api/v1/metrics`, `/api/v1/data` | live latency, benchmark results, dataset registry |
 
 ## Data sources and licences
@@ -177,7 +212,8 @@ Interactive reference at `/docs`. Main endpoints:
 | [Ultralytics YOLO11n](https://github.com/ultralytics/ultralytics) COCO weights | road-user detector; starting point for our road-damage model | AGPL-3.0 | hence this repository is AGPL-3.0; a commercial deployment needs an Ultralytics licence or an Apache-2.0 detector |
 | [Leaflet](https://leafletjs.com) 1.9.4 | maps | BSD-2-Clause | vendored in `web/vendor/leaflet` |
 | [Geist](https://vercel.com/font) fonts | typography | SIL OFL 1.1 | vendored in `web/vendor/geist` |
-| OpenStreetMap tiles | map background | ODbL, © OpenStreetMap contributors | |
+| OpenStreetMap | map background; the plan of the dashcam crossing fixes the camera's scale and the cross street's direction | ODbL, © OpenStreetMap contributors | |
+| Dashcam clip, Tashkent, 16 July 2026 | the real CrossGuard case | provided by the team | only 79 anonymised frames (10 s before impact) are in `demo/incident/`; faces and plate bands blurred; the replay stops at impact |
 | Python libraries | FastAPI, Uvicorn, NumPy, SciPy, OpenCV, ONNX Runtime, Pillow, PyTorch (training only) | MIT / BSD / Apache-2.0 | see `requirements*.txt` |
 
 **Labelling.** The Tashkent test labels are image level: whether road damage is visible on the drivable surface ahead,
@@ -191,6 +227,8 @@ pass is tracked and exported with the labels.
 * No customer records and no non-public data. Street imagery comes from public, licensed sources. Mapillary blurs faces
   and plates, but registration numbers painted on truck bodies and some faces survive, so we blur every person and
   vehicle in images we publish. Evidence snapshots created by the service are blurred (heads, plate band) before storage.
+* The dashcam case: faces and plate bands are blurred in every published frame, using detections from the frame and its
+  four neighbours so that one missed detection does not leak a face or a plate. The replay stops at the moment of impact.
 * The partner feed exposes events, never device identities or tracks.
 * Guardian is advisory perception sharing for research and pilots. It is never connected to braking or steering.
 
@@ -201,6 +239,9 @@ pass is tracked and exported with the labels.
 * Crowdsourced input is noisy: about 9 % of the Tashkent images were not road scenes, and a quarter were too dark,
   blurred or wet to judge. A road-scene gate and night data are on the roadmap.
 * Synthetic night and rain perturbations are a stress test, not a substitute for real night and rain footage.
+* CrossGuard's end-to-end start check is limited by how well distant cross traffic is localised from the cameras we have.
+* The real case is a reconstruction from one camera with 1 Hz GPS: positions ±20 %, motorcycle speed ±20 %, the motorcycle
+  assumed to ride straight along the cross street; the page lists what is measured, estimated and assumed.
 
 ## How this was built
 
