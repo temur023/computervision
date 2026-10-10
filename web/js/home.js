@@ -12,7 +12,7 @@ export default async function home(root) {
   const rows = [
     {
       n: '01', href: '#/guardian', name: 'Guardian', stage: 'Research core', col: 'var(--network)',
-      what: 'Shows a driver the cyclists and pedestrians that their own camera cannot see, using the cameras around them.',
+      what: 'Shows a driver the cyclists and pedestrians their own camera cannot see, predicts whose path will cross theirs, and warns in time.',
       who: 'Fleets · carmakers\' safety teams · city traffic centres',
       fig: coop ? num(coop['occluded_vru_recall_fused_%'], '%', 'of cyclists and motorcyclists hidden from the car\'s own camera are found by the network',
         `V2X-Sim 2.0 · ${coop.gt_occluded_vru} hidden instances · own camera alone: 0%`) : num(null, '', 'benchmark result missing'),

@@ -7,14 +7,14 @@ export default async function guardian(root, args) {
   const coop = metrics.coop_v2xsim;
   const o = coop?.configs?.['rsu+v2v']?.overall, r = coop?.configs?.rsu?.overall;
   const v2x = (data.datasets || []).find(d => d.id === 'v2xsim');
+  const cgr = metrics.conflict_v2xsim;
 
   root.append(h(`<div class="wrap">
     <section class="page-head">
-      <span class="label">Module 01 · Guardian · research core</span>
-      <h1>See the road users your camera cannot</h1>
-      <p class="lead">Each camera detects and tracks road users and places them on a shared ground plane, with uncertainty. The network
-        associates and fuses these observations, then tells every camera what is hidden from it and what is hiding it.
-        Advisory only: never connected to vehicle control.</p>
+      <span class="label">Module 01 · Guardian + CrossGuard · research core</span>
+      <h1>See the road users your camera cannot, before your paths cross</h1>
+      <p class="lead">Cameras place every road user on a shared ground plane. Guardian tells each car what is hidden from it;
+        CrossGuard predicts whose path will cross whose and warns the driver in time. Advisory only: never connected to vehicle control.</p>
     </section>
     <div class="spec">
       <div><span class="label">Problem · user</span><p>A pedestrian behind a bus or a cyclist behind a parked car is invisible to the driver
@@ -24,7 +24,8 @@ export default async function guardian(root, args) {
       <div><span class="label">Model</span><p>YOLO11n detector, ByteTrack, ground homography with pose recovered from 4 points, Mahalanobis-gated
         association and a <b>Kalman filter in metres</b>, then per-camera occlusion reasoning.</p></div>
       <div><span class="label">Measured</span><p>${o ? `Hidden road users recovered: <b>${o['occluded_recall_fused_%']}%</b> (own camera 0%).
-        Recall in view <b>${r['recall_single_camera_%']}% → ${o['recall_fused_%']}%</b>. Median position error <b>${o.loc_err_fused_m_median} m</b>.` : 'Benchmark pending.'}</p></div>
+        Median position error <b>${o.loc_err_fused_m_median} m</b>.` : 'Benchmark pending.'}
+        ${cgr ? `<br>Path 2 s ahead: <b>${cgr.prediction_error_m_median['2s'].ours} m</b> error (constant speed ${cgr.prediction_error_m_median['2s'].cv} m).` : ''}</p></div>
     </div>
 
     <section class="section" style="border-top:0">
