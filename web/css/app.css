@@ -332,3 +332,70 @@ input[type=checkbox] { accent-color: var(--ink); }
 @media (max-width: 640px) { .nums { grid-template-columns: 1fr; } .nums .v { font-size: 1.9rem; } }
 .stage2 > .cam-pane, .stage2 > .map-pane2 { grid-area: auto; }
 .stage2 > .map-pane2 { align-self: stretch; }
+
+/* ---------- overview: one row per module, with the one number that justifies it ---------- */
+.hero h1 { max-width: 16ch; }
+.mods { border-top: 1px solid var(--ink); margin-bottom: clamp(28px, 4vw, 48px); }
+.mod { display: grid; grid-template-columns: 56px minmax(0, 1.2fr) minmax(0, 1fr) 28px; gap: clamp(16px, 3vw, 40px); align-items: start; padding: 1.9rem 0; border-bottom: 1px solid var(--rule); text-decoration: none; color: inherit; }
+.mod:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.mod > .label { padding-top: .45rem; }
+.mod h3 { font-size: 1.5rem; }
+.mod .stage { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-top: .5rem; }
+.mod-what > p { color: var(--ink-2); font-size: .95rem; margin-top: .9rem; max-width: 44ch; }
+.mod-what > p.who { font: 12px/1.5 var(--mono); color: var(--ink-3); margin-top: .7rem; }
+.mnum .v { font: 500 clamp(2.4rem, 4.4vw, 3.4rem)/1 var(--mono); letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.mnum .v small { font-size: .36em; letter-spacing: 0; color: var(--ink-3); margin-left: .2em; }
+.mnum .v.none { color: var(--rule-2); }
+.mnum .k { margin-top: .7rem; font-size: .92rem; color: var(--ink-2); max-width: 32ch; }
+.mnum .src { margin-top: .45rem; font: 11px/1.5 var(--mono); color: var(--ink-3); }
+.mod .go { font: 500 1.1rem var(--mono); text-align: right; color: var(--ink-3); padding-top: .3rem; }
+@media (max-width: 860px) { .mod { grid-template-columns: 1fr; gap: .9rem; } .mod .go { display: none; } }
+.pipeline.p4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .pipeline.p4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- module pages: lifecycle line, fact lists, limits ---------- */
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: .86rem; }
+.flow .arr { font-family: var(--mono); color: var(--ink-3); }
+.facts { display: flex; flex-direction: column; gap: .9rem; }
+.facts > div { display: flex; flex-direction: column; gap: .2rem; }
+.facts > div > span { color: var(--ink-2); font-size: .9rem; }
+.limits { margin: 0; padding-left: 1.1rem; color: var(--ink-2); line-height: 1.65; }
+.limits li + li { margin-top: .4rem; }
+.limits b { color: var(--ink); font-weight: 600; }
+.steps { list-style: none; margin: 0 0 1.4rem; padding: 0; display: flex; flex-wrap: wrap; gap: .6rem 2rem; font-size: .92rem; color: var(--ink-2); }
+.steps b { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--rule-2); font: 600 11px var(--mono); color: var(--ink); margin-right: .55rem; }
+
+/* scan: sample images from our test set, verdict bar variants */
+.samples { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.sample { border: 1px solid var(--rule); background: var(--surface); padding: 0; border-radius: 6px; overflow: hidden; cursor: pointer; text-align: left; font: inherit; color: inherit; transition: border-color .15s; }
+.sample img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.sample span { display: block; padding: .38rem .5rem .42rem; font: 500 10px/1.3 var(--mono); color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sample:hover { border-color: var(--ink); }
+.sample.active { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+@media (max-width: 760px) { .samples { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.instrument .alertbar b { font-weight: 600; }
+.instrument .alertbar.hazard { border-top-color: #f0a030; }
+.instrument .alertbar.hazard i { background: #f0a030; }
+.instrument .alertbar.calm { border-top-color: #4b5059; }
+.instrument .alertbar.calm i { background: #8b9099; }
+.legend .pin { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: -1px; }
+
+/* progressive disclosure: details are one click away, never in the way */
+details.more > summary { cursor: pointer; font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); list-style: none; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: "+"; display: inline-block; width: 1.1em; font-weight: 600; }
+details.more[open] > summary::before { content: "−"; }
+details.more > summary:hover { color: var(--ink); }
+
+/* data page: the claims ledger */
+.ledger td { vertical-align: baseline; }
+.ledger .val { font: 500 1.05rem var(--mono); color: var(--ink); white-space: nowrap; }
+.ledger td.mono { font-size: .76rem; }
+.ledger td.muted { font-size: .86rem; }
+.tbl.mini { font-size: .88rem; }
+.scroll-x > .tbl.mini { min-width: 0; }
+.tbl tr.sum td { border-top: 1px solid var(--ink); font-weight: 600; }
+.drop .again { display: none; }
+.drop.compact { min-height: 0; flex-direction: row; padding: .75rem 1rem; }
+.drop.compact > b, .drop.compact > .faint { display: none; }
+.drop.compact .again { display: inline; font-size: .88rem; color: var(--ink-2); }

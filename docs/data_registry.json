@@ -22,16 +22,16 @@
       "id": "tashkent",
       "name": "Tashkent street imagery \u00b7 our labels",
       "module": "road",
-      "role": "local test set on Uzbek roads (and verified pseudo-labels for local fine-tuning)",
+      "role": "local test set on Uzbek roads; never used for training",
       "source": "https://www.mapillary.com (Graph API v4)",
       "origin": "Mapillary contributors; faces and licence plates blurred by Mapillary",
       "license": "CC BY-SA 4.0 (images) \u00b7 our annotations CC BY-SA 4.0",
       "content": "1,449 perspective phone images captured from vehicles in Tashkent (2016-2026 captures, mostly 2019+), 0.02\u00b0 grid, at most 4 frames per capture sequence",
       "used": null,
       "sampling": "grid over the city bbox 69.15-69.40 E, 41.23-41.40 N; split train/test by grid tile so no street appears in both",
-      "labels": "test split: image-level labels (damage present, damage types, not-road, uncertain) on 120 images, first pass by Claude (LLM vision, our AI assistant) without model pre-labels, to be verified by the team in the platform's review screen; train split: model pre-labels accepted or rejected per image",
+      "labels": "test split: image-level labels (damage present, damage types, not-road, uncertain) on 120 images, first pass by Claude (LLM vision, our AI assistant) without model pre-labels, to be verified by the team in the platform's review screen. Images from the other tiles are kept for future local fine-tuning and are not used yet",
       "script": "training/fetch_mapillary.py",
-      "status": "collecting"
+      "status": "test set labelled"
     },
     {
       "id": "v2xsim",

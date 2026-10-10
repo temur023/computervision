@@ -7,43 +7,39 @@ export default async function charge(root) {
     <section class="page-head">
       <span class="label">Module 03 · ChargePulse · add-on</span>
       <h1>Which charging bays are free, and since when</h1>
-      <p class="lead">One camera over a charging site and the bays drawn once. ChargePulse reports visual occupancy per bay with timestamps
-        and utilisation. It never reports "charging": that state belongs to the operator's telemetry.</p>
+      <p class="lead">One camera over a charging site, the bays drawn once. ChargePulse reports what the camera sees: occupied or free, with the time it changed.</p>
     </section>
     <div class="spec">
-      <div><span class="label">Problem · user</span><p>EV drivers arrive at bays that are blocked, and operators cannot see bay use between sessions.
-        <b>Users:</b> charging operators, dealer service centres, parking owners.</p></div>
-      <div><span class="label">Data</span><p>No extra training data: it reuses the <b>road-user detector</b> (COCO classes car, truck, bus, motorcycle).</p></div>
-      <div><span class="label">Model</span><p>Bay polygons × the <b>ground-contact band</b> of each vehicle box (lower 40%). A state changes only after
-        <b>3 agreeing samples</b>.</p></div>
-      <div><span class="label">Measured</span><p><b>Not evaluated yet.</b> The pilot's first step is two weeks of footage at one site with hourly manual counts.</p></div>
+      <div><span class="label">Problem · users</span><p>Drivers arrive at blocked bays; operators cannot see bay use between sessions.
+        <b>Charging operators, dealer service centres.</b></p></div>
+      <div><span class="label">Data</span><p>No new training data. It reuses the <b>road-user detector</b> (car, truck, bus, motorcycle).</p></div>
+      <div><span class="label">Model</span><p>A bay is occupied when a vehicle's <b>ground contact</b> covers it, in <b>3 samples in a row</b>.</p></div>
+      <div><span class="label">Measured</span><p><b>Not measured yet.</b> Pilot step one: two weeks at one site with hourly manual counts.</p></div>
     </div>
 
     <section class="section" style="border-top:0">
+      <ol class="steps"><li><b>1</b>Drop a photo or video of the bays</li><li><b>2</b>Tap the corners of each bay, then “Close bay”</li><li><b>3</b>Analyse on the server</li></ol>
       <div class="work">
         <div class="stack">
-          <label class="drop" id="drop"><input type="file" accept="image/*,video/*"><b>Drop a photo or video of the bays</b><span class="faint">camera looking down at a parking or charging area</span></label>
-          <div class="instrument hidden" id="stage" style="cursor:crosshair"><canvas class="base" id="cv"></canvas><span class="tag">draw bays: tap corners</span></div>
+          <label class="drop" id="drop"><input type="file" accept="image/*,video/*"><b>Drop a photo or video of the bays</b><span class="faint">a camera looking down at a parking or charging area</span></label>
+          <div class="instrument hidden" id="stage" style="cursor:crosshair"><canvas class="base" id="cv"></canvas><span class="tag">tap the corners of a bay</span></div>
           <div class="row"><button class="btn" id="close" disabled>Close bay</button><button class="btn quiet" id="undo" disabled>Undo last bay</button>
-            <button class="btn primary" id="run" disabled>Analyse on server <span class="arr">→</span></button></div>
+            <button class="btn primary" id="run" disabled>Analyse <span class="arr">→</span></button></div>
           <div class="progress"><div id="pbar"></div></div>
         </div>
         <aside>
-          <div class="panel"><span class="label">Bays</span><div id="bays"><p class="faint">Tap three or more corners of a bay, then "Close bay". Repeat for each bay.</p></div></div>
+          <div class="panel"><span class="label">Bays</span><div id="bays"><p class="faint">No bays yet.</p></div></div>
           <div class="panel"><span class="label">State changes</span><div id="events" class="mono faint" style="font-size:.8rem">—</div></div>
         </aside>
       </div>
     </section>
 
     <section class="section">
-      <div class="section-head"><span class="label">Semantics</span><div><h2>What the API promises, and what it does not</h2></div></div>
+      <div class="section-head"><span class="label">What it promises</span><div><h2>Occupancy, not charging status</h2></div></div>
       <div class="cols c3">
-        <div><h3>Visual occupancy</h3><p class="muted" style="margin-top:.4rem">A vehicle's contact band covers at least 25% of the bay for three consecutive samples.
-          Reported with the time the state began.</p></div>
-        <div><h3>Not charging status</h3><p class="muted" style="margin-top:.4rem">"Occupied" can mean a combustion car blocking the bay, or a finished session.
-          Charging state comes from the operator (OCPP) and is joined in the operator's system.</p></div>
-        <div><h3>API</h3><p class="muted" style="margin-top:.4rem"><span class="mono">GET /api/v1/charger-observations?site=…</span> returns state changes with timestamps.
-          No images or plates are stored.</p></div>
+        <div><h3>Visual occupancy</h3><p class="muted" style="margin-top:.4rem">A vehicle's ground-contact band covers at least 25% of the bay in three samples in a row.</p></div>
+        <div><h3>Not charging status</h3><p class="muted" style="margin-top:.4rem">“Occupied” can be a petrol car blocking the bay. Charging state comes from the operator's own telemetry (OCPP).</p></div>
+        <div><h3>No images kept</h3><p class="muted" style="margin-top:.4rem">The API returns state changes with timestamps: <span class="mono">GET /api/v1/charger-observations</span>. No frames, no plates.</p></div>
       </div>
     </section>
   </div>`));
@@ -74,7 +70,7 @@ export default async function charge(root) {
   }
   function renderBays() {
     const box = root.querySelector('#bays');
-    if (!bays.length) { box.innerHTML = '<p class="faint">Tap three or more corners of a bay, then "Close bay". Repeat for each bay.</p>'; }
+    if (!bays.length) { box.innerHTML = '<p class="faint">No bays yet.</p>'; }
     else box.innerHTML = `<div class="list">${bays.map((b, i) => {
       const s = states[`bay${i + 1}`];
       const tl = s?.timeline ? `<div class="timeline" style="margin-top:.45rem">${s.timeline.map(([a, b2, st]) => `<span style="flex:${Math.max(0.01, b2 - a)};background:${st === 'occupied' ? 'var(--hazard)' : 'var(--verified)'}"></span>`).join('')}</div>` : '';
