@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+from .conflict import Agent, ConflictMonitor, assess_all, assess_for
 from .detector import Detections
 from .geometry import CameraGeometry, mahalanobis2, uncertainty_radius
 from .tracker import ByteTracker
@@ -123,9 +124,10 @@ class Observation:
 class CameraNode:
     """Per-camera perception: rider composition, tracking, ground projection."""
 
-    def __init__(self, cam_id: str, geometry: CameraGeometry | None, track_buffer: int = 15):
+    def __init__(self, cam_id: str, geometry: CameraGeometry | None, track_buffer: int = 15, mount: str = "fixed"):
         self.cam_id = cam_id
         self.geometry = geometry
+        self.mount = mount  # "vehicle": a car's own camera (CrossGuard for that car); "fixed": road-side camera
         self.tracker = ByteTracker(high_thr=0.45, low_thr=0.15, new_track_thr=0.5, track_buffer=track_buffer, min_hits=1)
         self.labels: dict[int, Counter] = {}
         self.last_tracks: list[dict] = []
@@ -183,6 +185,7 @@ class GlobalObject:
     seen: dict = field(default_factory=dict)  # cam -> last time observed
     conf: float = 0.0
     trail: list = field(default_factory=list)
+    hist: list = field(default_factory=list)  # [(t, x, y, vx, vy)] for motion prediction
     n_updates: int = 0
 
     @property
@@ -332,21 +335,95 @@ class CooperativeFusion:
             if g.gid in assigned:
                 g.trail.append((round(float(g.x[0]), 2), round(float(g.x[1]), 2)))
                 g.trail = g.trail[-25:]
+                g.hist.append((t, float(g.x[0]), float(g.x[1]), float(g.x[2]), float(g.x[3])))
+                g.hist = g.hist[-15:]
         return list(self.objects.values())
 
 
 class GuardianScene:
     """Several camera nodes + fusion + per-subscriber reasoning."""
 
-    def __init__(self, ttl: float = 1.0, alert_radius_m: float = 45.0):
+    def __init__(self, ttl: float = 1.0, alert_radius_m: float = 45.0, ego_offset_m: float = 1.5):
         self.nodes: dict[str, CameraNode] = {}
         self.fusion = CooperativeFusion(ttl=ttl)
         self.alert_radius_m = alert_radius_m
         self.ttl = ttl
         self.timing: dict[str, float] = {}
+        self.ego_offset_m = ego_offset_m  # vehicle centre lies this far behind a forward-facing camera
+        self.ego_hist: dict[str, list] = {}
+        self.monitors: dict[str, ConflictMonitor] = {}
 
-    def add_camera(self, cam_id: str, geometry: CameraGeometry | None):
-        self.nodes[cam_id] = CameraNode(cam_id, geometry)
+    def ego_agent(self, cam_id: str, t: float) -> Agent | None:
+        """The subscriber's own vehicle: position and heading from its camera pose, velocity from the pose history."""
+        geo = self.nodes[cam_id].geometry
+        if geo is None or geo.R is None:
+            return None
+        fwd = geo.R.T @ np.array([0.0, 0.0, 1.0])
+        hd = float(np.arctan2(fwd[1], fwd[0]))
+        pos = geo.center_ground - self.ego_offset_m * np.array([np.cos(hd), np.sin(hd)])
+        h = self.ego_hist.setdefault(cam_id, [])
+        if not h or t > h[-1][0]:
+            h.append((t, float(pos[0]), float(pos[1])))
+            del h[:-12]
+        v = np.zeros(2)
+        hist = []
+        for (t0, x0, y0), (t1, x1, y1) in zip(h, h[1:]):
+            vi = np.array([x1 - x0, y1 - y0]) / max(1e-3, t1 - t0)
+            hist.append((t1, x1, y1, float(vi[0]), float(vi[1])))
+        recent = [r for r in hist if r[0] >= t - 0.6]
+        if recent:
+            v = np.mean([[r[3], r[4]] for r in recent], axis=0)
+        return Agent("ego", "car", pos, v, 0.3, 0.3, hist, ego=True, heading=hd)
+
+    def _agents(self, t: float, objects: list[dict], exclude_near=None) -> list[Agent]:
+        by_gid = {o["gid"] for o in objects}
+        out = []
+        for g in self.fusion.objects.values():
+            if g.gid not in by_gid:
+                continue
+            if exclude_near is not None and g.group == "vehicle" and np.linalg.norm(g.xy - exclude_near) < 3.0:
+                continue  # our own car as the other cameras see it
+            Pv = g.P[2:, 2:]
+            out.append(Agent(str(g.gid), g.cls, g.xy.copy(), g.x[2:].copy(), float(np.sqrt(max(np.trace(g.cov) / 2, 0.04))),
+                             float(np.sqrt(max(np.trace(Pv) / 2, 0.04))), list(g.hist), age_s=t - g.created))
+        return out
+
+    def conflicts_between(self, cam_id: str, t: float, objects: list[dict]) -> dict:
+        """CrossGuard for a road-side camera: predicted conflicts between every pair of road users it knows about."""
+        t0 = time.perf_counter()
+        res = assess_all(self._agents(t, objects), seed=int(round(t * 10)))
+        for r in res:
+            r["gids"] = [int(x) for x in r["pair"]]
+        alerts = self.monitors.setdefault(cam_id, ConflictMonitor()).update(res, t)
+        self.timing["conflict_ms"] = (time.perf_counter() - t0) * 1e3
+        return {"ego": None, "assessments": res, "alerts": alerts}
+
+    def conflicts_for(self, cam_id: str, t: float, objects: list[dict]) -> dict:
+        """CrossGuard for one subscriber: predicted conflicts between its vehicle and every fused road user."""
+        ego = self.ego_agent(cam_id, t)
+        if ego is None:
+            return {"ego": None, "assessments": [], "alerts": []}
+        by_gid = {o["gid"]: o for o in objects}
+        others = self._agents(t, objects, exclude_near=ego.xy)
+        t0 = time.perf_counter()
+        res = assess_for(ego, others, seed=int(round(t * 10)))
+        for r in res:
+            o = by_gid.get(int(r["pair"][1]))
+            r["gid"] = int(r["pair"][1])
+            r["gids"] = [int(r["pair"][1])]
+            r["status"] = o.get("status") if o else None
+            if o and o.get("status") == "occluded" and o.get("occluded_by"):
+                r["reason"] = r["reason"].replace(":", f", hidden behind a {o['occluded_by']['cls']}:", 1)
+        mon = self.monitors.setdefault(cam_id, ConflictMonitor())
+        alerts = mon.update(res, t)
+        self.timing["conflict_ms"] = (time.perf_counter() - t0) * 1e3
+        s = float(np.hypot(*ego.v))
+        return {"ego": {"xy": [round(float(ego.xy[0]), 2), round(float(ego.xy[1]), 2)], "heading": round(ego.heading, 4),
+                        "speed_kmh": round(s * 3.6, 1), "mode": "moving" if s >= 1.0 else "stopped"},
+                "assessments": res, "alerts": alerts}
+
+    def add_camera(self, cam_id: str, geometry: CameraGeometry | None, mount: str = "fixed"):
+        self.nodes[cam_id] = CameraNode(cam_id, geometry, mount=mount)
 
     def ingest(self, cam_id: str, det: Detections, t: float, geometry: CameraGeometry | None = None) -> list[Observation]:
         t0 = time.perf_counter()
@@ -440,8 +517,23 @@ class GuardianScene:
                     })
             objects.append(rec)
         alerts.sort(key=lambda a: -a["priority"])
+        if geo is None:
+            cg = {"ego": None, "assessments": [], "alerts": []}
+        elif node.mount == "vehicle":
+            cg = self.conflicts_for(cam_id, t, objects)
+        else:
+            cg = self.conflicts_between(cam_id, t, objects)
+        risk = {}
+        for r in cg["assessments"]:
+            for gid in r["gids"]:
+                if risk.get(gid) != "high":
+                    risk[gid] = r["level"]
+        for o in objects:
+            if o["gid"] in risk:
+                o["risk"] = risk[o["gid"]]
         return {
             "camera": cam_id,
+            "crossguard": cg,
             "geometry": geo.describe() if geo else None,
             "own_tracks": own,
             "objects": objects,

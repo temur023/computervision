@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 
 from . import __version__
 from .chargepulse import ChargePulse
+from .incident import reconstruct as reconstruct_incident
 from .detector import MODELS_DIR, Detections, load_default_detectors
 from .geometry import CameraGeometry
 from .guardian import GuardianScene, Observation, compose_road_users
@@ -83,6 +84,10 @@ async def lifespan(_app):
         # compute the default Guardian demo once in the background so the console opens instantly;
         # the page labels it with the time this server computed it
         def warm():
+            try:
+                incident_result()
+            except Exception as e:  # never block start-up
+                print("incident reconstruction failed:", e)
             try:
                 run_demo("CAM_FRONT_id_1", ["CAM_id_0_0", "CAM_id_0_1", "CAM_id_0_2", "CAM_id_0_3"], 1.0)
             except Exception as e:  # never block start-up
@@ -553,7 +558,7 @@ def run_demo(ego: str, sources: list[str], ttl: float, emit=None, should_stop=No
     det = S.detectors["road_users"]
     scene = GuardianScene(ttl=ttl)
     for c in cams:
-        scene.add_camera(c, None)
+        scene.add_camera(c, None, mount="vehicle" if c == ego else "fixed")
     n = len(sc["frames"])
     frames, totals = [], []
     for i, fr in enumerate(sc["frames"]):
@@ -591,6 +596,36 @@ def run_demo(ego: str, sources: list[str], ttl: float, emit=None, should_stop=No
     if len(frames) == n:
         S.demo_cache[_demo_key(ego, sources, ttl)] = {"frames": frames, "summary": summary}
     return summary
+
+
+_incident_lock = threading.Lock()
+
+
+def incident_result() -> dict | None:
+    """The Tashkent dashcam case, reconstructed by swarmsight.incident on this server (once, then cached)."""
+    if (DEMO_DIR / "incident" / "scene.json").exists() is False:
+        return None
+    with _incident_lock:
+        if "incident" not in S.demo_cache:
+            S.load()
+            t0 = time.perf_counter()
+            res = reconstruct_incident(DEMO_DIR / "incident", S.detectors["road_users"])
+            res["computed_at"] = time.time()
+            res["compute_s"] = round(time.perf_counter() - t0, 1)
+            S.demo_cache["incident"] = res
+    return S.demo_cache["incident"]
+
+
+@app.get("/api/v1/guardian/incident")
+def guardian_incident():
+    """Real case: a crash at a Tashkent crossing from one dashcam, and the CrossGuard counterfactual."""
+    if "incident" in S.demo_cache:
+        return {"ready": True, **S.demo_cache["incident"]}
+    if not (DEMO_DIR / "incident" / "scene.json").exists():
+        raise HTTPException(404, "case not bundled")
+    if not _incident_lock.locked():
+        threading.Thread(target=incident_result, daemon=True).start()
+    return {"ready": False}
 
 
 @app.post("/api/v1/guardian/demo/run")
@@ -1112,5 +1147,7 @@ def demo_basemap(name: str):
 
 if (DEMO_DIR / "v2xsim" / "frames").exists():
     app.mount("/demo/v2xsim/frames", StaticFiles(directory=str(DEMO_DIR / "v2xsim" / "frames")), name="demo")
+if (DEMO_DIR / "incident" / "frames").exists():
+    app.mount("/demo/incident/frames", StaticFiles(directory=str(DEMO_DIR / "incident" / "frames")), name="incident")
 if WEB_DIR.exists():
     app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

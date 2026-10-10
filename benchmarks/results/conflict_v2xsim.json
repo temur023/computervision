@@ -1,0 +1,77 @@
+{
+  "dataset": "V2X-Sim 2.0 mini, scene_5 (Town03 intersection), 100 frames @5 Hz",
+  "pipeline": "detections (road-side unit + other vehicles' front cameras) -> Guardian fusion -> swarmsight.conflict",
+  "prediction_error_m_median": {
+    "1s": {
+      "n": 1499,
+      "ours": 1.33,
+      "best_of": 1.19,
+      "cv": 1.38,
+      "static": 2.52
+    },
+    "2s": {
+      "n": 1452,
+      "ours": 2.91,
+      "best_of": 2.36,
+      "cv": 3.24,
+      "static": 4.55
+    },
+    "3s": {
+      "n": 1376,
+      "ours": 5.2,
+      "best_of": 3.83,
+      "cv": 5.89,
+      "static": 8.22
+    }
+  },
+  "start_check": {
+    "checks": 5804,
+    "positives": 55,
+    "high": {
+      "precision_%": 20.8,
+      "recall_%": 20.0,
+      "n": 53
+    },
+    "caution_or_high": {
+      "precision_%": 9.2,
+      "recall_%": 23.6,
+      "n": 141
+    },
+    "auroc": 0.634,
+    "positives_not_perceived": 34
+  },
+  "start_check_prediction_only": {
+    "checks": 5532,
+    "positives": 55,
+    "high": {
+      "precision_%": 35.9,
+      "recall_%": 76.4,
+      "n": 117
+    },
+    "caution_or_high": {
+      "precision_%": 24.3,
+      "recall_%": 96.4,
+      "n": 218
+    },
+    "auroc": 0.988,
+    "positives_not_perceived": 0,
+    "note": "same check on ground-truth positions and velocities (perfect perception): the prediction logic alone"
+  },
+  "start_check_definition": "label: had the waiting ego started now (2 m/s\u00b2 from rest, straight on), its footprint would have come within 0.5 m of the road user's actual footprint within 6 s; road users moving >= 1 m/s, crossing or oncoming, not behind",
+  "moving": {
+    "minutes": 0.19,
+    "gt_near_misses": 0,
+    "warned_near_misses": 0,
+    "warnings": 3,
+    "warnings_on_near_miss": 0,
+    "false_warnings_per_min": 15.79
+  },
+  "thresholds": {
+    "high_p": 0.35,
+    "high_ttc_s": 3.0,
+    "caution_p": 0.15,
+    "start_high_p": 0.35,
+    "start_caution_p": 0.15,
+    "set": "a priori, not tuned on this scene"
+  }
+}

@@ -1,0 +1,578 @@
+{
+ "name": "Tashkent crossing, 16 July 2026, 18:28",
+ "source": "Dashcam footage recorded and provided by the SwarmSight team; people and plates blurred by us",
+ "clip_seconds": [
+  20.0,
+  29.75
+ ],
+ "fps": 8.0,
+ "frames": [
+  {
+   "t": 20.0,
+   "src_frame": 480,
+   "img": "f0480.jpg"
+  },
+  {
+   "t": 20.125,
+   "src_frame": 483,
+   "img": "f0483.jpg"
+  },
+  {
+   "t": 20.25,
+   "src_frame": 486,
+   "img": "f0486.jpg"
+  },
+  {
+   "t": 20.375,
+   "src_frame": 489,
+   "img": "f0489.jpg"
+  },
+  {
+   "t": 20.5,
+   "src_frame": 492,
+   "img": "f0492.jpg"
+  },
+  {
+   "t": 20.625,
+   "src_frame": 495,
+   "img": "f0495.jpg"
+  },
+  {
+   "t": 20.75,
+   "src_frame": 498,
+   "img": "f0498.jpg"
+  },
+  {
+   "t": 20.875,
+   "src_frame": 501,
+   "img": "f0501.jpg"
+  },
+  {
+   "t": 21.0,
+   "src_frame": 504,
+   "img": "f0504.jpg"
+  },
+  {
+   "t": 21.125,
+   "src_frame": 507,
+   "img": "f0507.jpg"
+  },
+  {
+   "t": 21.25,
+   "src_frame": 510,
+   "img": "f0510.jpg"
+  },
+  {
+   "t": 21.375,
+   "src_frame": 513,
+   "img": "f0513.jpg"
+  },
+  {
+   "t": 21.5,
+   "src_frame": 516,
+   "img": "f0516.jpg"
+  },
+  {
+   "t": 21.625,
+   "src_frame": 519,
+   "img": "f0519.jpg"
+  },
+  {
+   "t": 21.75,
+   "src_frame": 522,
+   "img": "f0522.jpg"
+  },
+  {
+   "t": 21.875,
+   "src_frame": 525,
+   "img": "f0525.jpg"
+  },
+  {
+   "t": 22.0,
+   "src_frame": 528,
+   "img": "f0528.jpg"
+  },
+  {
+   "t": 22.125,
+   "src_frame": 531,
+   "img": "f0531.jpg"
+  },
+  {
+   "t": 22.25,
+   "src_frame": 534,
+   "img": "f0534.jpg"
+  },
+  {
+   "t": 22.375,
+   "src_frame": 537,
+   "img": "f0537.jpg"
+  },
+  {
+   "t": 22.5,
+   "src_frame": 540,
+   "img": "f0540.jpg"
+  },
+  {
+   "t": 22.625,
+   "src_frame": 543,
+   "img": "f0543.jpg"
+  },
+  {
+   "t": 22.75,
+   "src_frame": 546,
+   "img": "f0546.jpg"
+  },
+  {
+   "t": 22.875,
+   "src_frame": 549,
+   "img": "f0549.jpg"
+  },
+  {
+   "t": 23.0,
+   "src_frame": 552,
+   "img": "f0552.jpg"
+  },
+  {
+   "t": 23.125,
+   "src_frame": 555,
+   "img": "f0555.jpg"
+  },
+  {
+   "t": 23.25,
+   "src_frame": 558,
+   "img": "f0558.jpg"
+  },
+  {
+   "t": 23.375,
+   "src_frame": 561,
+   "img": "f0561.jpg"
+  },
+  {
+   "t": 23.5,
+   "src_frame": 564,
+   "img": "f0564.jpg"
+  },
+  {
+   "t": 23.625,
+   "src_frame": 567,
+   "img": "f0567.jpg"
+  },
+  {
+   "t": 23.75,
+   "src_frame": 570,
+   "img": "f0570.jpg"
+  },
+  {
+   "t": 23.875,
+   "src_frame": 573,
+   "img": "f0573.jpg"
+  },
+  {
+   "t": 24.0,
+   "src_frame": 576,
+   "img": "f0576.jpg"
+  },
+  {
+   "t": 24.125,
+   "src_frame": 579,
+   "img": "f0579.jpg"
+  },
+  {
+   "t": 24.25,
+   "src_frame": 582,
+   "img": "f0582.jpg"
+  },
+  {
+   "t": 24.375,
+   "src_frame": 585,
+   "img": "f0585.jpg"
+  },
+  {
+   "t": 24.5,
+   "src_frame": 588,
+   "img": "f0588.jpg"
+  },
+  {
+   "t": 24.625,
+   "src_frame": 591,
+   "img": "f0591.jpg"
+  },
+  {
+   "t": 24.75,
+   "src_frame": 594,
+   "img": "f0594.jpg"
+  },
+  {
+   "t": 24.875,
+   "src_frame": 597,
+   "img": "f0597.jpg"
+  },
+  {
+   "t": 25.0,
+   "src_frame": 600,
+   "img": "f0600.jpg"
+  },
+  {
+   "t": 25.125,
+   "src_frame": 603,
+   "img": "f0603.jpg"
+  },
+  {
+   "t": 25.25,
+   "src_frame": 606,
+   "img": "f0606.jpg"
+  },
+  {
+   "t": 25.375,
+   "src_frame": 609,
+   "img": "f0609.jpg"
+  },
+  {
+   "t": 25.5,
+   "src_frame": 612,
+   "img": "f0612.jpg"
+  },
+  {
+   "t": 25.625,
+   "src_frame": 615,
+   "img": "f0615.jpg"
+  },
+  {
+   "t": 25.75,
+   "src_frame": 618,
+   "img": "f0618.jpg"
+  },
+  {
+   "t": 25.875,
+   "src_frame": 621,
+   "img": "f0621.jpg"
+  },
+  {
+   "t": 26.0,
+   "src_frame": 624,
+   "img": "f0624.jpg"
+  },
+  {
+   "t": 26.125,
+   "src_frame": 627,
+   "img": "f0627.jpg"
+  },
+  {
+   "t": 26.25,
+   "src_frame": 630,
+   "img": "f0630.jpg"
+  },
+  {
+   "t": 26.375,
+   "src_frame": 633,
+   "img": "f0633.jpg"
+  },
+  {
+   "t": 26.5,
+   "src_frame": 636,
+   "img": "f0636.jpg"
+  },
+  {
+   "t": 26.625,
+   "src_frame": 639,
+   "img": "f0639.jpg"
+  },
+  {
+   "t": 26.75,
+   "src_frame": 642,
+   "img": "f0642.jpg"
+  },
+  {
+   "t": 26.875,
+   "src_frame": 645,
+   "img": "f0645.jpg"
+  },
+  {
+   "t": 27.0,
+   "src_frame": 648,
+   "img": "f0648.jpg"
+  },
+  {
+   "t": 27.125,
+   "src_frame": 651,
+   "img": "f0651.jpg"
+  },
+  {
+   "t": 27.25,
+   "src_frame": 654,
+   "img": "f0654.jpg"
+  },
+  {
+   "t": 27.375,
+   "src_frame": 657,
+   "img": "f0657.jpg"
+  },
+  {
+   "t": 27.5,
+   "src_frame": 660,
+   "img": "f0660.jpg"
+  },
+  {
+   "t": 27.625,
+   "src_frame": 663,
+   "img": "f0663.jpg"
+  },
+  {
+   "t": 27.75,
+   "src_frame": 666,
+   "img": "f0666.jpg"
+  },
+  {
+   "t": 27.875,
+   "src_frame": 669,
+   "img": "f0669.jpg"
+  },
+  {
+   "t": 28.0,
+   "src_frame": 672,
+   "img": "f0672.jpg"
+  },
+  {
+   "t": 28.125,
+   "src_frame": 675,
+   "img": "f0675.jpg"
+  },
+  {
+   "t": 28.25,
+   "src_frame": 678,
+   "img": "f0678.jpg"
+  },
+  {
+   "t": 28.375,
+   "src_frame": 681,
+   "img": "f0681.jpg"
+  },
+  {
+   "t": 28.5,
+   "src_frame": 684,
+   "img": "f0684.jpg"
+  },
+  {
+   "t": 28.625,
+   "src_frame": 687,
+   "img": "f0687.jpg"
+  },
+  {
+   "t": 28.75,
+   "src_frame": 690,
+   "img": "f0690.jpg"
+  },
+  {
+   "t": 28.875,
+   "src_frame": 693,
+   "img": "f0693.jpg"
+  },
+  {
+   "t": 29.0,
+   "src_frame": 696,
+   "img": "f0696.jpg"
+  },
+  {
+   "t": 29.125,
+   "src_frame": 699,
+   "img": "f0699.jpg"
+  },
+  {
+   "t": 29.25,
+   "src_frame": 702,
+   "img": "f0702.jpg"
+  },
+  {
+   "t": 29.375,
+   "src_frame": 705,
+   "img": "f0705.jpg"
+  },
+  {
+   "t": 29.5,
+   "src_frame": 708,
+   "img": "f0708.jpg"
+  },
+  {
+   "t": 29.625,
+   "src_frame": 711,
+   "img": "f0711.jpg"
+  },
+  {
+   "t": 29.75,
+   "src_frame": 714,
+   "img": "f0714.jpg"
+  }
+ ],
+ "frame_scale": 0.75,
+ "telemetry": [
+  {
+   "t": 0,
+   "lat": 41.32853,
+   "lon": 69.35432,
+   "kmh": 0
+  },
+  {
+   "t": 14,
+   "lat": 41.32853,
+   "lon": 69.35432,
+   "kmh": 0
+  },
+  {
+   "t": 15,
+   "lat": 41.32851,
+   "lon": 69.35432,
+   "kmh": 0
+  },
+  {
+   "t": 19,
+   "lat": 41.32851,
+   "lon": 69.3543,
+   "kmh": 0
+  },
+  {
+   "t": 25,
+   "lat": 41.32851,
+   "lon": 69.3543,
+   "kmh": 0
+  },
+  {
+   "t": 26,
+   "lat": 41.32851,
+   "lon": 69.3543,
+   "kmh": 3
+  },
+  {
+   "t": 27,
+   "lat": 41.32851,
+   "lon": 69.3543,
+   "kmh": 6
+  },
+  {
+   "t": 28,
+   "lat": 41.32853,
+   "lon": 69.35433,
+   "kmh": 9
+  },
+  {
+   "t": 29,
+   "lat": 41.32857,
+   "lon": 69.35436,
+   "kmh": 16
+  },
+  {
+   "t": 30,
+   "lat": 41.32862,
+   "lon": 69.35441,
+   "kmh": 22
+  },
+  {
+   "t": 31,
+   "lat": 41.32866,
+   "lon": 69.35445,
+   "kmh": 27
+  },
+  {
+   "t": 32,
+   "lat": 41.32872,
+   "lon": 69.35451,
+   "kmh": 29
+  },
+  {
+   "t": 33,
+   "lat": 41.32878,
+   "lon": 69.35457,
+   "kmh": 24
+  },
+  {
+   "t": 34,
+   "lat": 41.32883,
+   "lon": 69.35462,
+   "kmh": 17
+  },
+  {
+   "t": 35,
+   "lat": 41.32886,
+   "lon": 69.35463,
+   "kmh": 9
+  },
+  {
+   "t": 36,
+   "lat": 41.32887,
+   "lon": 69.35465,
+   "kmh": 5
+  }
+ ],
+ "telemetry_note": "read by us from the dashcam overlay (GPS updates once a second, 5 decimals, about 1 m)",
+ "calibration": {
+  "image_size": [
+   1280,
+   720
+  ],
+  "horizon_y": 426.0,
+  "vanishing_x": 663.0,
+  "focal_px": 1350.0,
+  "camera_height_m": 1.38,
+  "lane_width_m": 3.5,
+  "uncertainty": "distances +-20%",
+  "focal_from": "distance to the crossing on the OpenStreetMap plan at impact, checked with the car's apparent width"
+ },
+ "annotations": {
+  "motorcycle_1": [
+   {
+    "t": 29.375,
+    "src_frame": 705,
+    "box": [
+     247,
+     410,
+     282,
+     437
+    ]
+   },
+   {
+    "t": 29.542,
+    "src_frame": 709,
+    "box": [
+     440,
+     428,
+     486,
+     458
+    ]
+   },
+   {
+    "t": 29.625,
+    "src_frame": 711,
+    "box": [
+     488,
+     428,
+     530,
+     460
+    ]
+   },
+   {
+    "t": 29.667,
+    "src_frame": 712,
+    "box": [
+     527,
+     428,
+     575,
+     468
+    ]
+   },
+   {
+    "t": 29.708,
+    "src_frame": 713,
+    "box": [
+     581,
+     424,
+     627,
+     473
+    ]
+   }
+  ],
+  "note": "annotated by us frame by frame; the road-user detector does not find it (25-50 px, motion blur)"
+ },
+ "events": {
+  "impact_t": 29.75,
+  "signal_visible_t": 30.5
+ }
+}

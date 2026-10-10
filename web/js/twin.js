@@ -393,6 +393,45 @@ export class TwinMap {
   // a dashed line of sight from the car to each of them, and only three kinds of labels.
   renderClean(ctx, st, objs, cams, ego, own, net, key, d, fs, clock) {
     const { W, H } = this;
+    // CrossGuard: predicted paths of the most urgent conflicts and where they meet
+    const conflicts = (st.conflicts || []).slice(0, 2);
+    const at = new Map(objs.map(o => [String(o.gid), o.xy]));
+    const tags = [];
+    for (const c of conflicts) {
+      const col = c.level === 'high' ? C.critical : C.hazard;
+      const starts = c.pair.map(id => (id === 'ego' ? st.egoXY : at.get(String(id))) || null);
+      c.paths.forEach((path, k) => {
+        const s0 = starts[k];
+        if (!s0 || !path?.length) return;
+        const pts = [s0, ...path].map(q => this.p(q[0], q[1]));
+        const mine = c.pair[k] === 'ego';
+        ctx.save();
+        ctx.setLineDash(mine ? [3 * d, 4 * d] : c.level === 'high' ? [] : [7 * d, 4 * d]);
+        ctx.strokeStyle = mine ? 'rgba(233,231,226,.75)' : alpha(col, 0.9);
+        ctx.lineWidth = (mine ? 1.6 : 2.2) * d; ctx.lineCap = 'round';
+        ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+        ctx.restore();
+        const [ax, ay] = pts[pts.length - 1], [bx, by] = pts[Math.max(0, pts.length - 2)];
+        const ang = Math.atan2(ay - by, ax - bx);
+        ctx.beginPath(); ctx.moveTo(ax, ay);
+        ctx.lineTo(ax - 7 * d * Math.cos(ang - 0.45), ay - 7 * d * Math.sin(ang - 0.45));
+        ctx.lineTo(ax - 7 * d * Math.cos(ang + 0.45), ay - 7 * d * Math.sin(ang + 0.45)); ctx.closePath();
+        ctx.fillStyle = mine ? 'rgba(233,231,226,.75)' : col; ctx.fill();
+      });
+      const [px, py] = this.p(c.point[0], c.point[1]);
+      const rad = Math.max(1.4 * this.s, 7 * d);
+      ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2);
+      ctx.fillStyle = alpha(col, 0.18); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2 * d; ctx.stroke();
+      if (c.level === 'high') {
+        const ph = (clock * 1.3) % 1;
+        ctx.beginPath(); ctx.arc(px, py, rad + 14 * ph * d, 0, Math.PI * 2);
+        ctx.strokeStyle = alpha(col, 0.8 * (1 - ph)); ctx.lineWidth = 2 * d; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(px - rad * 0.45, py - rad * 0.45); ctx.lineTo(px + rad * 0.45, py + rad * 0.45);
+      ctx.moveTo(px + rad * 0.45, py - rad * 0.45); ctx.lineTo(px - rad * 0.45, py + rad * 0.45);
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6 * d; ctx.stroke();
+      tags.push([px, py, `CONFLICT · ${c.ttc_s.toFixed(1)} S`, col]);
+    }
     if (ego && net) {
       const [ex, ey] = this.p(ego.pos[0], ego.pos[1]);
       for (const o of objs.filter(key)) {
@@ -401,12 +440,16 @@ export class TwinMap {
         ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ox, oy); ctx.stroke(); ctx.restore();
       }
     }
+    const inConflict = new Map();
+    for (const c of conflicts) for (const id of c.pair) if (id !== 'ego' && inConflict.get(String(id)) !== 'high') inConflict.set(String(id), c.level);
     for (const o of objs) {
       if (key(o)) continue;
       const [px, py] = this.p(o.xy[0], o.xy[1]);
       const seen = o.status === 'visible';
+      const lv = inConflict.get(String(o.gid));
       ctx.beginPath(); ctx.arc(px, py, (VRU.has(o.cls) ? 3 : 4) * d, 0, Math.PI * 2);
-      ctx.fillStyle = seen ? 'rgba(233,231,226,.9)' : 'rgba(123,155,255,.75)'; ctx.fill();
+      ctx.fillStyle = lv ? (lv === 'high' ? C.critical : C.hazard) : seen ? 'rgba(233,231,226,.9)' : 'rgba(123,155,255,.75)'; ctx.fill();
+      if (lv) { ctx.beginPath(); ctx.arc(px, py, 8 * d, 0, Math.PI * 2); ctx.strokeStyle = lv === 'high' ? C.critical : C.hazard; ctx.lineWidth = 1.6 * d; ctx.stroke(); }
     }
     for (const o of objs.filter(key)) {
       const [px, py] = this.p(o.xy[0], o.xy[1]);
@@ -448,6 +491,7 @@ export class TwinMap {
       const [px, py] = this.p(o.xy[0], o.xy[1]);
       placeTag(ctx, layer, px, py, `${pretty(o.cls).toUpperCase()}${o.dist_m != null ? ` · ${Math.round(o.dist_m)} M` : ''}`, fs, C.critical, bounds, 'side');
     }
+    for (const [px, py, text, col] of tags) placeTag(ctx, layer, px, py, text, fs, col, bounds, 'above');
     if (st.chip) drawTag(ctx, { x: 10 * d, y: 10 * d, ...tagSize(ctx, st.chip, fs) }, st.chip, fs, C.muted);
     const bar = 10 * this.s, bx = 14 * d, by = H - 16 * d;
     ctx.strokeStyle = 'rgba(233,231,226,.8)'; ctx.lineWidth = 1.5 * d;

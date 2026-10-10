@@ -1,5 +1,6 @@
 import { api, C, esc, h, pretty, streamJob, VRU, wsUrl } from './util.js';
 import { drawHUD, drawThumbHUD, TwinMap } from './twin.js';
+import { realCase } from './realcase.js';
 
 export default async function guardian(root, args) {
   const [metrics, data] = await Promise.all([api('/api/v1/metrics').catch(() => ({})), api('/api/v1/data').catch(() => ({ datasets: [] }))]);
@@ -28,8 +29,8 @@ export default async function guardian(root, args) {
 
     <section class="section" style="border-top:0">
       <div class="row between" style="margin-bottom:1.2rem">
-        <div class="seg" id="tabs"><button data-t="demo">Demo intersection</button><button data-t="videos">Your two videos</button><button data-t="live">Two phones, live</button></div>
-        <span class="faint" style="font-size:.86rem">Everything below is computed on our server when you press Run.</span>
+        <div class="seg" id="tabs"><button data-t="real">Real crash · Tashkent</button><button data-t="demo">Digital twin</button><button data-t="videos">Your two videos</button><button data-t="live">Two phones, live</button></div>
+        <span class="faint" style="font-size:.86rem">Everything below is computed by our server.</span>
       </div>
       <div id="pane"></div>
     </section>
@@ -107,10 +108,10 @@ export default async function guardian(root, args) {
     if (cleanup) { cleanup(); cleanup = null; }
     root.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.t === t));
     pane.innerHTML = '';
-    cleanup = ({ demo, videos, live })[t](pane, args.slice(1));
+    cleanup = ({ real: realCase, demo, videos, live })[t](pane, args.slice(1));
   };
   root.querySelector('#tabs').onclick = e => e.target.dataset.t && open(e.target.dataset.t);
-  open(['demo', 'videos', 'live'].includes(args[0]) ? args[0] : 'demo');
+  open(['real', 'demo', 'videos', 'live'].includes(args[0]) ? args[0] : 'real');
   return () => cleanup && cleanup();
 }
 
@@ -167,6 +168,19 @@ function precisionOf(frames) {
 }
 
 const median = xs => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+
+// CrossGuard conflicts for the car. With the network off the car can only predict road users its own camera sees.
+const conflictsOf = (m, network) => (m.view.crossguard?.assessments || []).filter(r => network || r.status === 'visible');
+// Moments when CrossGuard told the waiting car not to start yet (start-now check), and how many came from hidden road users.
+function waitsOf(frames) {
+  let n = 0, hidden = 0, prev = false;
+  for (const m of frames) {
+    const w = conflictsOf(m, true).filter(r => r.hyp?.[0] === 'start');
+    if (w.length && !prev) { n++; if (w.some(r => r.status === 'occluded' || r.status === 'undetected')) hidden++; }
+    prev = w.length > 0;
+  }
+  return { n, hidden };
+}
 
 function timeline(container, onSeek, onToggle) {
   const el = h(`<div class="tl"><button class="playbtn" aria-label="Play">${ICON_PLAY}</button>
@@ -236,6 +250,7 @@ function demo(pane) {
       <span><i style="background:#e9e7e2"></i>seen by the car itself</span>
       <span><i style="background:#7b9bff"></i>known only through the network</span>
       <span><i style="background:#ff5a4a"></i>pedestrian or rider hidden from the car</span>
+      <span><i style="background:#f0a030"></i>CrossGuard: predicted path and conflict point</span>
     </div>
     <p class="statusline" id="status">Loading…</p>
   </div>`);
@@ -277,15 +292,16 @@ function demo(pane) {
     const prec = precisionOf(frames);
     const det = median(frames.flatMap(f => Object.values(f.timing.detect_ms)));
     const secs = ((frames.length - 1) / FPS).toFixed(0);
+    const w = waitsOf(frames);
     $('#kpis').innerHTML = [
       [episodes.length, '', `pedestrians and riders hidden from the car, revealed by the network in ${secs} s`],
       [prec ?? '—', prec != null ? '%' : '', 'of these alerts point at a real road user (checked against the simulator)'],
-      [det != null ? Math.round(det) : '—', 'ms', 'to analyse one camera image on this server'],
+      [w.n, '', `times CrossGuard told the waiting car not to start yet${w.hidden ? `; ${w.hidden} of them because of a road user it could not see` : ''}`],
     ].map(([v, u, k]) => `<div><div class="v">${v}<small>${u}</small></div><div class="k">${k}</div></div>`).join('');
     const sm = info?.summary;
     if (sm) {
       const when = new Date(sm.computed_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      status(`Computed on this server at ${when} · ${frames.length} frames from ${1 + sm.sources.length} cameras · scene: CARLA digital twin (V2X-Sim 2.0, Apache-2.0)`);
+      status(`Computed on this server at ${when} · ${frames.length} frames from ${1 + sm.sources.length} cameras${det != null ? ` · ${Math.round(det)} ms per camera image` : ''} · scene: CARLA digital twin (V2X-Sim 2.0, Apache-2.0)`);
     }
   }
 
@@ -371,7 +387,11 @@ function demo(pane) {
       $('#seen-cap').textContent = network ? `Seen by the ${plain(cam)}` : 'Network off: not shared with the car';
     }
     const bar = $('#bar');
-    if (!network) {
+    const cf = conflictsOf(m, network)[0];
+    if (cf) {
+      bar.className = cf.level === 'high' ? 'alertbar' : 'alertbar hazard';
+      bar.querySelector('span').innerHTML = `<b>${esc(cf.action)}.</b> ${esc(cf.reason)}`;
+    } else if (!network) {
       bar.className = 'alertbar calm';
       bar.querySelector('span').innerHTML = '<b>Network off.</b> The car only knows what its own camera sees.';
     } else if (focus) {
@@ -400,7 +420,8 @@ function demo(pane) {
       return { id, kind, pos: q && a > 0 ? lerp(c.pos, q.pos) : c.pos, yaw: c.yaw, fov: c.fov,
         label: kind === 'ego' ? 'THE CAR' : kind === 'rsu' ? 'INTERSECTION CAMERA' : camLabel(id).replace(' · front', '').toUpperCase() };
     });
-    map.render({ cams, objects, gt, network, clock, clean: true, chip: network ? null : 'NETWORK OFF' });
+    map.render({ cams, objects, gt, network, clock, clean: true, chip: network ? null : 'NETWORK OFF',
+      conflicts: conflictsOf(m, network), egoXY: m.view.crossguard?.ego?.xy });
   }
 
   function tick(ts) {
