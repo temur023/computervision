@@ -23,6 +23,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import ExifTags, Image, ImageOps
@@ -63,6 +64,7 @@ class State:
         self.job_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("SWARMSIGHT_JOB_WORKERS", "2")))
         self.live_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("SWARMSIGHT_LIVE_WORKERS", "2")))
         self.latency = deque(maxlen=500)  # (kind, ms)
+        self.demo_cache: dict[str, dict] = {}
         self.started = time.time()
 
     def load(self):
@@ -77,6 +79,15 @@ S = State()
 @asynccontextmanager
 async def lifespan(_app):
     S.load()
+    if os.environ.get("SWARMSIGHT_WARM", "1") != "0" and (DEMO_DIR / "v2xsim" / "scene.json").exists():
+        # compute the default Guardian demo once in the background so the console opens instantly;
+        # the page labels it with the time this server computed it
+        def warm():
+            try:
+                run_demo("CAM_FRONT_id_1", ["CAM_id_0_0", "CAM_id_0_1", "CAM_id_0_2", "CAM_id_0_3"], 1.0)
+            except Exception as e:  # never block start-up
+                print("warm-up failed:", e)
+        threading.Thread(target=warm, daemon=True).start()
     yield
 
 
@@ -84,6 +95,7 @@ app = FastAPI(title="SwarmSight AI", version=__version__,
               lifespan=lifespan, description="Collective vision for connected mobility: Guardian (cooperative perception), "
                           "Road Intelligence (verified road events) and ChargePulse (EV bay occupancy).")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(GZipMiddleware, minimum_size=2048)
 
 
 # ----------------------------------------------------------------------------- helpers
@@ -528,53 +540,84 @@ class DemoIn(BaseModel):
     ttl_s: float = 1.0
 
 
+def _demo_key(ego: str, sources: list[str], ttl: float) -> str:
+    return f"{ego}|{','.join(sorted(set(sources) - {ego}))}|{ttl:.2f}"
+
+
+def run_demo(ego: str, sources: list[str], ttl: float, emit=None, should_stop=None) -> dict:
+    """Run the full Guardian pipeline over the bundled scene: detection on every camera, tracking, fusion and
+    per-camera reasoning, frame by frame.  Returns every frame message plus a summary."""
+    S.load()
+    sc = _demo_scene()
+    cams = [ego] + [c for c in sources if c != ego]
+    det = S.detectors["road_users"]
+    scene = GuardianScene(ttl=ttl)
+    for c in cams:
+        scene.add_camera(c, None)
+    n = len(sc["frames"])
+    frames, totals = [], []
+    for i, fr in enumerate(sc["frames"]):
+        if should_stop and should_stop():
+            break
+        t = fr["t"]
+        t_frame = time.perf_counter()
+        cam_out, det_ms = {}, {}
+        # sources first: their observations reach the ego within the same cycle
+        for c in cams[1:] + cams[:1]:
+            cd = fr["cams"][c]
+            img = cv2.imread(str(DEMO_DIR / "v2xsim" / "frames" / cd["img"]))
+            geo = CameraGeometry.from_KRt(cd["K"], cd["R"], cd["t"], cd["w"], cd["h"], source="V2X-Sim calibration")
+            t0 = time.perf_counter()
+            d = det(img)
+            det_ms[c] = round((time.perf_counter() - t0) * 1e3, 1)
+            scene.ingest(c, d, t, geo)
+            cam_out[c] = {"img": cd["img"], "tracks": scene.nodes[c].last_tracks, "fov": fov_polygon(geo), **cam_pose2d(geo)}
+        t_fuse = time.perf_counter()
+        view = scene.view_for(ego, t)
+        fuse_ms = (time.perf_counter() - t_fuse) * 1e3 + scene.timing.get("fusion_ms", 0)
+        total = (time.perf_counter() - t_frame) * 1e3
+        S.latency.append(("guardian_frame", total))
+        totals.append(total)
+        msg = {"type": "frame", "i": i, "t": t, "n": n, "cams": cam_out, "ego": ego, "view": view, "gt": fr["gt"],
+               "timing": {"detect_ms": det_ms, "fusion_ms": round(fuse_ms, 1), "frame_total_ms": round(total, 1),
+                          "detect_parallel_ms": max(det_ms.values())}}
+        frames.append(msg)
+        if emit:
+            emit(msg, (i + 1) / n)
+    summary = {"frames": len(frames), "ego": ego, "sources": cams[1:], "ttl_s": ttl,
+               "occluded_alerts": sum(1 for f in frames for a in f["view"]["alerts"] if a["status"] == "occluded"),
+               "frame_ms_p50": round(float(np.median(totals)), 1) if totals else None,
+               "cpu_count": os.cpu_count(), "computed_at": time.time()}
+    if len(frames) == n:
+        S.demo_cache[_demo_key(ego, sources, ttl)] = {"frames": frames, "summary": summary}
+    return summary
+
+
 @app.post("/api/v1/guardian/demo/run")
 def guardian_demo_run(req: DemoIn):
     S.load()
     sc = _demo_scene()
-    cams = [req.ego] + [c for c in req.sources if c != req.ego]
-    for c in cams:
+    for c in [req.ego] + req.sources:
         if c not in sc["cameras"]:
             raise HTTPException(400, f"unknown camera {c}")
-    det = S.detectors["road_users"]
 
     def work(job: Job):
-        scene = GuardianScene(ttl=req.ttl_s)
-        for c in cams:
-            scene.add_camera(c, None)
-        n = len(sc["frames"])
-        stats = {"occluded_alerts": 0, "frames": 0}
-        for i, fr in enumerate(sc["frames"]):
-            if job.cancelled:
-                break
-            t = fr["t"]
-            t_frame = time.perf_counter()
-            cam_out, det_ms = {}, {}
-            # sources first: their observations reach the ego within the same cycle
-            for c in cams[1:] + cams[:1]:
-                cd = fr["cams"][c]
-                img = cv2.imread(str(DEMO_DIR / "v2xsim" / "frames" / cd["img"]))
-                geo = CameraGeometry.from_KRt(cd["K"], cd["R"], cd["t"], cd["w"], cd["h"], source="V2X-Sim calibration")
-                t0 = time.perf_counter()
-                d = det(img)
-                det_ms[c] = round((time.perf_counter() - t0) * 1e3, 1)
-                scene.ingest(c, d, t, geo)
-                cam_out[c] = {"img": cd["img"], "tracks": scene.nodes[c].last_tracks, "fov": fov_polygon(geo), **cam_pose2d(geo)}
-            t_fuse = time.perf_counter()
-            view = scene.view_for(req.ego, t)
-            fuse_ms = (time.perf_counter() - t_fuse) * 1e3 + scene.timing.get("fusion_ms", 0)
-            total = (time.perf_counter() - t_frame) * 1e3
-            S.latency.append(("guardian_frame", total))
-            stats["frames"] += 1
-            stats["occluded_alerts"] += sum(1 for a in view["alerts"] if a["status"] == "occluded")
-            job.progress = (i + 1) / n
-            job.emit({"type": "frame", "i": i, "t": t, "cams": cam_out, "ego": req.ego, "view": view, "gt": fr["gt"],
-                      "timing": {"detect_ms": det_ms, "fusion_ms": round(fuse_ms, 1), "frame_total_ms": round(total, 1),
-                                 "detect_parallel_ms": max(det_ms.values())}})
-        return {"frames": stats["frames"], "occluded_alerts": stats["occluded_alerts"], "ego": req.ego, "sources": cams[1:]}
+        def emit(msg, progress):
+            job.progress = progress
+            job.emit(msg)
+        return run_demo(req.ego, req.sources, req.ttl_s, emit, lambda: job.cancelled)
 
     job = _submit("guardian_demo", work)
     return {"job_id": job.id}
+
+
+@app.get("/api/v1/guardian/demo/cached")
+def guardian_demo_cached(ego: str = "CAM_FRONT_id_1", sources: str = "CAM_id_0_0,CAM_id_0_1,CAM_id_0_2,CAM_id_0_3", ttl_s: float = 1.0):
+    """A run this server already computed for the same configuration (startup warm-up or an earlier Run)."""
+    hit = S.demo_cache.get(_demo_key(ego, [s for s in sources.split(",") if s], ttl_s))
+    if not hit:
+        return {"ready": False, "detail": "not computed yet: start a live run"}
+    return {"ready": True, **hit}
 
 
 @app.post("/api/v1/guardian/videos")
@@ -1056,12 +1099,15 @@ def charger_observations(site: str | None = None, limit: int = 200):
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 if (ROOT / "datasets" / "tashkent" / "images").exists():
     app.mount("/datasets/tashkent/images", StaticFiles(directory=str(ROOT / "datasets" / "tashkent" / "images")), name="tashkent")
-@app.get("/demo/v2xsim/ortho.jpg", include_in_schema=False)
-def demo_ortho():
-    p = DEMO_DIR / "v2xsim" / "ortho.jpg"
+@app.get("/demo/v2xsim/{name}", include_in_schema=False)
+def demo_basemap(name: str):
+    if name not in ("ortho.jpg", "map.png"):
+        raise HTTPException(404, "not found")
+    p = DEMO_DIR / "v2xsim" / name
     if not p.exists():
-        raise HTTPException(404, "orthophoto not built")
-    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+        raise HTTPException(404, "basemap not built")
+    return FileResponse(p, media_type="image/png" if name.endswith(".png") else "image/jpeg",
+                        headers={"Cache-Control": "public, max-age=3600"})
 
 
 if (DEMO_DIR / "v2xsim" / "frames").exists():

@@ -1,4 +1,5 @@
-import { api, BEV, C, drawBox, esc, figure, fitCanvas, h, pretty, streamJob, VRU, wsUrl } from './util.js';
+import { api, C, esc, h, pretty, streamJob, VRU, wsUrl } from './util.js';
+import { drawHUD, drawThumbHUD, TwinMap } from './twin.js';
 
 export default async function guardian(root, args) {
   const [metrics, data] = await Promise.all([api('/api/v1/metrics').catch(() => ({})), api('/api/v1/data').catch(() => ({ datasets: [] }))]);
@@ -113,194 +114,365 @@ export default async function guardian(root, args) {
   return () => cleanup && cleanup();
 }
 
-// ------------------------------------------------------------------ drawing
-function ghostColour(o) { return o.status === 'occluded' && VRU.has(o.cls) ? C.critical : C.network; }
-
-function drawCamView(canvas, view, srcW, camLabel) {
-  const dpr = window.devicePixelRatio || 1;
-  const r = canvas.getBoundingClientRect();
-  const ctx = fitCanvas(canvas, Math.round(r.width * dpr), Math.round(r.height * dpr));
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!view) return;
-  const s = canvas.width / srcW;
-  for (const tr of view.own_tracks || []) drawBox(ctx, tr.bbox, pretty(tr.cls), C.own, { scale: s });
-  for (const o of view.objects || []) {
-    if (!o.ghost_box || !['occluded', 'undetected'].includes(o.status)) continue;
-    const lbl = o.status === 'occluded' ? `hidden ${pretty(o.cls)} · behind ${pretty(o.occluded_by?.cls)} · ${o.dist_m} m` : `missed ${pretty(o.cls)} · ${o.dist_m} m`;
-    drawBox(ctx, o.ghost_box, lbl, ghostColour(o), { scale: s, dashed: true, fill: o.status === 'occluded', lw: 1.8 });
-    const src = (o.sources || []).map(c => camLabel(c)).join(', ');
-    ctx.font = `500 ${10 * dpr}px "Geist Mono", monospace`;
-    ctx.fillStyle = 'rgba(233,231,226,.9)';
-    ctx.fillText(`via ${src} · ${o.age_ms} ms`.toUpperCase(), o.ghost_box[0] * s + 4 * dpr, o.ghost_box[3] * s - 5 * dpr);
-  }
-}
-
-function drawThumb(canvas, tracks, srcW) {
-  const dpr = window.devicePixelRatio || 1;
-  const r = canvas.getBoundingClientRect();
-  const ctx = fitCanvas(canvas, Math.round(r.width * dpr), Math.round(r.height * dpr));
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const tr of tracks || []) drawBox(ctx, tr.bbox, '', C.network, { scale: canvas.width / srcW, lw: 1.2 });
-}
-
-function drawWorld(bev, { cams = {}, ego, objects = [], gt = [], showGt = true }) {
-  const ctx = bev.begin();
-  for (const [c, info] of Object.entries(cams)) if (info.fov) bev.poly(info.fov, c === ego ? 'rgba(233,231,226,.45)' : 'rgba(123,155,255,.35)', c === ego ? 'rgba(233,231,226,.06)' : 'rgba(123,155,255,.05)');
-  if (showGt) for (const g of gt) bev.box(g.xy, g.yaw, g.l, g.w, 'rgba(139,144,153,.75)');
-  const d = window.devicePixelRatio || 1;
-  for (const o of objects) {
-    const col = o.status === 'visible' ? C.own : ghostColour(o);
-    bev.trail(o.trail, col);
-    bev.dot(o.xy, o.status === 'occluded' ? 4.5 : 3.5, col, o.status === 'occluded' ? pretty(o.cls).toUpperCase() : '', o.r2s);
-    if (o.status === 'occluded') { const [x, y] = bev.p(o.xy); ctx.beginPath(); ctx.arc(x, y, 9 * d, 0, 7); ctx.strokeStyle = col; ctx.lineWidth = 1.5 * d; ctx.stroke(); }
-  }
-  for (const [c, info] of Object.entries(cams)) if (info.pos) bev.dot(info.pos, c === ego ? 5 : 4, c === ego ? '#ffffff' : C.network, info.label || '');
+// ------------------------------------------------------------------ drawing shared by the three modes
+function drawCamView(canvas, view, srcW, camLabel) { drawHUD(canvas, view, srcW, { camLabel }); }
+function drawThumb(canvas, tracks, srcW) { drawThumbHUD(canvas, tracks, srcW); }
+function drawWorld(map, { cams = {}, ego, objects = [], gt = [], showGt = true, chip = 'LIVE · YOUR CAMERAS' }) {
+  const list = Object.entries(cams).filter(([, c]) => c && c.pos)
+    .map(([id, c]) => ({ id, kind: id === ego ? 'fixed-ego' : 'rsu', pos: c.pos, yaw: c.yaw ?? 0, fov: c.fov, label: (c.label || `camera ${id}`).toUpperCase() }));
+  map.render({ cams: list, objects, gt: showGt ? gt : null, network: true, clock: performance.now() / 1000, chip });
 }
 
 function alertsHtml(alerts, camLabel) {
   if (!alerts?.length) return '<p class="faint">Nothing hidden from this camera right now.</p>';
-  return `<div class="list">${alerts.slice(0, 10).map(a => `<div class="item"><div>
-    <div class="t"><span class="dot" style="background:${a.status === 'occluded' && a.vru ? 'var(--critical)' : 'var(--network)'}"></span>${a.status === 'occluded' ? 'Hidden' : 'Missed'} ${esc(pretty(a.cls))} · ${a.distance_m} m${a.occluded_by ? ` · behind ${esc(pretty(a.occluded_by.cls))}` : ''}</div>
+  return `<div class="list">${alerts.slice(0, 8).map(a => `<div class="item"><div>
+    <div class="t"><span class="dot" style="background:${a.status === 'occluded' && a.vru ? 'var(--critical)' : '#7b9bff'}"></span>${a.status === 'occluded' ? 'Hidden' : 'Not detected here'}: ${esc(pretty(a.cls))} · ${Math.round(a.distance_m)} m${a.occluded_by ? ` · behind ${esc(pretty(a.occluded_by.cls).toLowerCase())}` : ''}</div>
     <div class="m">via ${a.sources.map(s => esc(camLabel(s))).join(', ')} · age ${a.age_ms} ms · ±${a.uncertainty_m} m · TTL ${a.ttl_ms} ms</div></div>
     <span class="mono faint">${a.priority.toFixed(2)}</span></div>`).join('')}</div>`;
 }
 
-// ------------------------------------------------------------------ demo (V2X-Sim)
+// ------------------------------------------------------------------ demo: the Guardian console on the V2X-Sim digital twin
+const RSU_CAMS = ['CAM_id_0_0', 'CAM_id_0_1', 'CAM_id_0_2', 'CAM_id_0_3'];
+const FPS = 5;
+const ICON_PLAY = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg>';
+const ICON_PAUSE = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.6v9H2.5zM6.9 1.5h2.6v9H6.9z" fill="currentColor"/></svg>';
+const fmtT = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${String(m).padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`; };
+const isKey = o => o.status === 'occluded' && VRU.has(o.cls);  // what the console is about: hidden pedestrians and riders
+
+// Episodes in which a pedestrian or rider was hidden from the car (at least two consecutive frames).
+function episodesOf(frames) {
+  const by = new Map();
+  frames.forEach(m => {
+    for (const o of m.view.objects) {
+      if (!isKey(o)) continue;
+      let e = by.get(o.gid);
+      if (!e) { e = { gid: o.gid, cls: o.cls, t0: m.t, t1: m.t, n: 0, occ: new Set(), dmin: Infinity }; by.set(o.gid, e); }
+      e.t1 = m.t; e.n++;
+      if (o.occluded_by) e.occ.add(o.occluded_by.cls);
+      if (o.dist_m != null) e.dmin = Math.min(e.dmin, o.dist_m);
+    }
+  });
+  return [...by.values()].filter(e => e.n >= 2).sort((a, b) => a.t0 - b.t0);
+}
+
+// Share of hidden-pedestrian/rider alerts that sit on a real road user (simulator ground truth).
+function precisionOf(frames) {
+  let tp = 0, n = 0;
+  for (const m of frames) for (const a of m.view.alerts) {
+    if (!(a.status === 'occluded' && a.vru)) continue;
+    n++;
+    if (m.gt.some(g => Math.hypot(g.xy[0] - a.position_m[0], g.xy[1] - a.position_m[1]) <= 2.5)) tp++;
+  }
+  return n ? Math.round((100 * tp) / n) : null;
+}
+
+const median = xs => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+
+function timeline(container, onSeek, onToggle) {
+  const el = h(`<div class="tl"><button class="playbtn" aria-label="Play">${ICON_PLAY}</button>
+    <div class="track"><div class="loaded"></div><div class="bars"></div><div class="head"></div></div>
+    <span class="time">00:00.0 / 00:00.0</span></div>`);
+  container.append(el);
+  const track = el.querySelector('.track');
+  track.addEventListener('click', e => {
+    const seg = e.target.closest('[data-t]');
+    if (seg) return onSeek(null, +seg.dataset.t);
+    const r = track.getBoundingClientRect();
+    onSeek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)));
+  });
+  el.querySelector('.playbtn').onclick = onToggle;
+  return {
+    setEpisodes(episodes, loaded, total) {
+      const span = Math.max(1e-6, (total - 1) / FPS);
+      el.querySelector('.loaded').style.width = `${(100 * loaded) / Math.max(1, total)}%`;
+      el.querySelector('.bars').innerHTML = episodes.map(e => `<span data-t="${e.t0}" title="${esc(pretty(e.cls))} hidden behind ${esc([...e.occ].map(x => pretty(x).toLowerCase()).join(', ') || 'an obstacle')} · ${Math.round(e.dmin)} m"
+        style="left:${(100 * e.t0) / span}%;width:max(4px, ${(100 * (e.t1 - e.t0 + 1 / FPS)) / span}%);height:100%;background:${C.critical};cursor:pointer"></span>`).join('');
+    },
+    set(pos, total, playing, tNow, tMax) {
+      el.querySelector('.head').style.left = `calc(${(100 * pos) / Math.max(1, total - 1)}% - 1px)`;
+      el.querySelector('.time').textContent = `${fmtT(tNow)} / ${fmtT(tMax)}`;
+      const btn = el.querySelector('.playbtn');
+      const want = playing ? 'pause' : 'play';
+      if (btn.dataset.state !== want) { btn.dataset.state = want; btn.innerHTML = playing ? ICON_PAUSE : ICON_PLAY; btn.setAttribute('aria-label', playing ? 'Pause' : 'Play'); }
+    },
+  };
+}
+
 function demo(pane) {
-  const ui = h(`<div class="stack">
-    <div class="row between">
-      <div class="row" style="gap:1.2rem">
-        <label class="field"><span>Ego camera</span><select id="ego">
-          <option value="CAM_FRONT_id_1">Vehicle 1 · stopped behind a car</option><option value="CAM_FRONT_id_4">Vehicle 4</option></select></label>
-        <div class="field"><span>Sources</span><div class="row" id="srcs" style="min-height:40px"></div></div>
+  const ui = h(`<div class="console" tabindex="-1">
+    <div class="bar">
+      <div class="ctl"><span class="title">Guardian</span><span class="lbl">Digital twin of a city intersection</span></div>
+      <div class="ctl">
+        <button class="netswitch on" id="net" aria-pressed="true" title="Network on or off (N)"><span class="knob"></span><span id="netlbl">Network on</span></button>
+        <button class="btn" id="present" title="Full screen (F) · space: play · ← →: step · N: network">Present</button>
+        <button class="btn" id="opts" aria-expanded="false">Settings</button>
       </div>
-      <div class="row"><label class="check"><input type="checkbox" id="gt" checked> ground truth</label>
-        <button class="btn primary" id="run">Run on server <span class="arr">→</span></button></div>
     </div>
-    <div class="progress"><div id="pbar"></div></div>
-    <div class="work">
-      <div class="stack">
-        <div class="instrument" id="ego-stage"><img id="ego-img" alt="ego camera"><canvas class="overlay" id="ego-ov"></canvas>
-          <span class="tag" id="ego-tag">ego camera</span><div class="alertbar hidden" id="ego-bar"><i></i><span></span></div></div>
-        <div class="strip" id="thumbs"></div>
-        <div class="row"><button class="btn" id="play" disabled>Replay</button><input type="range" id="scrub" min="0" max="0" value="0" disabled style="flex:1;accent-color:var(--ink)"></div>
-        <div class="legend"><span><i style="background:${C.own};outline:1px solid #0002"></i>seen by the ego camera</span><span><i style="background:${C.network}"></i>seen only by other cameras</span>
-          <span><i style="background:${C.critical}"></i>hidden vulnerable road user</span><span><i style="background:#8b9099"></i>ground truth</span></div>
+    <div class="bar settings hidden" id="settings">
+      <div class="ctl">
+        <select id="ego" aria-label="Car that receives the alerts">
+          <option value="CAM_FRONT_id_1">Vehicle 1 · waiting behind a car</option>
+          <option value="CAM_FRONT_id_4">Vehicle 4 · next lane</option>
+        </select>
+        <span class="lbl">Sources</span><span class="ctl" id="srcs"></span>
+        <button class="chip" id="gt">Ground truth</button>
       </div>
-      <aside>
-        <canvas class="bev" id="bev"></canvas>
-        <div class="panel" style="margin-top:1rem"><span class="label">Alerts for the ego camera</span><div id="alerts"><p class="faint">Press Run.</p></div></div>
-        <div class="panel"><span class="label">This run</span><div class="cols c2" id="kpis"></div></div>
-        <div class="panel"><span class="label">Timing on this server</span><div id="timing"><p class="faint">—</p></div></div>
-      </aside>
+      <button class="btn primary" id="run">Recompute live on server</button>
     </div>
-    <p class="note">CARLA scene from V2X-Sim 2.0 (Apache-2.0). We bundle only raw frames and calibration; detection, tracking, fusion and
-      occlusion reasoning run on our server when you press Run.</p>
+    <div class="progress hidden" id="prog"><div></div></div>
+    <div class="stage2">
+      <div class="pane cam-pane"><img id="ego-img" alt="What the car's own camera sees"><canvas class="overlay" id="hud"></canvas>
+        <span class="cap">What the car sees</span>
+        <div class="alertbar calm" id="bar"><i></i><span>—</span></div>
+        <div class="poster-cta hidden" id="cta"><p>Not computed on this server yet for this setting.</p><button class="btn primary" id="cta-run">Run live on server</button></div></div>
+      <div class="pane map-pane2"><canvas id="map" aria-label="Top view of the intersection"></canvas><span class="cap right">Top view</span></div>
+    </div>
+    <div id="tl"></div>
+    <div class="foot2">
+      <div class="pane seenby" id="seenby"><img alt="What the intersection camera sees"><canvas class="overlay"></canvas><span class="cap" id="seen-cap">Intersection camera</span></div>
+      <div class="nums" id="kpis"></div>
+    </div>
+    <div class="legend dark">
+      <span><i style="background:#e9e7e2"></i>seen by the car itself</span>
+      <span><i style="background:#7b9bff"></i>known only through the network</span>
+      <span><i style="background:#ff5a4a"></i>pedestrian or rider hidden from the car</span>
+    </div>
+    <p class="statusline" id="status">Loading…</p>
   </div>`);
   pane.append(ui);
-  const bev = new BEV(ui.querySelector('#bev'));
-  (() => {  // placeholder until the first frame arrives
-    const cv = ui.querySelector('#bev'), d = window.devicePixelRatio || 1, w = Math.round(cv.getBoundingClientRect().width * d) || 600;
-    cv.width = w; cv.height = w;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#0d0f12'; ctx.fillRect(0, 0, w, w);
-    ctx.fillStyle = '#5d626b'; ctx.font = `500 ${11 * d}px "Geist Mono", monospace`; ctx.textAlign = 'center';
-    ctx.fillText('BIRD\'S-EYE VIEW · APPEARS WHEN THE SERVER RUNS', w / 2, w / 2);
-  })();
-  let scene = null, job = null, frames = [], cur = 0, timer = 0;
+  const $ = s => ui.querySelector(s);
+  const map = new TwinMap($('#map'));
+  map.setView(-1, 137, 62);
+  let scene = null, frames = [], total = 60, job = null, raf = 0, poll = 0, episodes = [];
+  let playing = false, t = 0, lastTs = 0, live = false, network = true, showGt = false, shown = -1, info = null, lastSeen = null;
+  const imgs = new Map();
+  const img = name => { let im = imgs.get(name); if (!im) { im = new Image(); im.decoding = 'async'; im.src = `/demo/v2xsim/frames/${name}`; imgs.set(name, im); } return im; };
   const camLabel = c => scene?.cameras?.[c] || c;
-  const preview = () => { if (scene && !frames.length) ui.querySelector('#ego-img').src = `/demo/v2xsim/frames/${scene.preview[ui.querySelector('#ego').value]}`; };
-  ui.querySelector('#ego').onchange = preview;
+  const plain = c => RSU_CAMS.includes(c) ? `intersection camera (${camLabel(c).replace('RSU · ', '')})` : camLabel(c).replace(' · front', '');
+  const tl = timeline($('#tl'), (frac, at) => seek(frac, at), () => setPlaying(!playing));
+  const tMax = () => Math.max(0, (frames.length - 1) / FPS);
 
-  api('/api/v1/guardian/demo/scene').then(s => {
-    scene = s;
-    preview();
-    const srcs = ui.querySelector('#srcs');
-    for (const [c, label] of Object.entries(s.cameras)) if (!c.startsWith('CAM_FRONT'))
-      srcs.append(h(`<label class="check"><input type="checkbox" value="${c}" checked>${esc(label.replace('RSU · ', 'RSU '))}</label>`));
-    srcs.append(h(`<label class="check"><input type="checkbox" value="V2V">other vehicle</label>`));
-  }).catch(e => { ui.querySelector('#alerts').innerHTML = `<p class="error">${esc(e.message)}</p>`; });
+  const config = () => {
+    const ego = $('#ego').value;
+    return { ego, sources: [...ui.querySelectorAll('#srcs .chip.on')].map(b => b.dataset.cam).filter(c => c !== ego) };
+  };
+  function buildSources() {
+    const ego = $('#ego').value;
+    const other = ego === 'CAM_FRONT_id_1' ? 'CAM_FRONT_id_4' : 'CAM_FRONT_id_1';
+    const prev = new Set([...ui.querySelectorAll('#srcs .chip.on')].map(b => b.dataset.cam));
+    const first = !ui.querySelector('#srcs .chip');
+    $('#srcs').innerHTML = '';
+    for (const c of [...RSU_CAMS, other]) {
+      const on = first ? RSU_CAMS.includes(c) : prev.has(c) || (RSU_CAMS.includes(c) && !prev.size);
+      const b = h(`<button class="chip ${on ? 'on' : ''}" data-cam="${c}">${esc(camLabel(c).replace(' · front', ''))}</button>`);
+      b.onclick = () => { b.classList.toggle('on'); loadCached(); };
+      $('#srcs').append(b);
+    }
+  }
+  const status = text => { $('#status').textContent = text; };
 
-  function show(i) {
-    const m = frames[i]; if (!m) return;
-    cur = i;
-    ui.querySelector('#scrub').value = i;
-    const img = ui.querySelector('#ego-img');
-    img.src = `/demo/v2xsim/frames/${m.cams[m.ego].img}`;
-    ui.querySelector('#ego-tag').textContent = `${camLabel(m.ego)} · t ${m.t.toFixed(1)} s`;
-    const draw = () => drawCamView(ui.querySelector('#ego-ov'), m.view, 800, camLabel);
-    if (img.complete) draw(); else img.onload = draw;
-    const hidden = m.view.alerts.filter(a => a.status === 'occluded');
-    const bar = ui.querySelector('#ego-bar');
-    bar.classList.toggle('hidden', !hidden.length);
-    if (hidden.length) {
-      const vru = hidden.filter(a => a.vru);
-      bar.querySelector('span').textContent = `${hidden.length} road user${hidden.length > 1 ? 's' : ''} hidden from this camera${vru.length ? `, ${vru.length} vulnerable` : ''}. Revealed by the network.`;
+  function finalize() {
+    episodes = episodesOf(frames);
+    tl.setEpisodes(episodes, frames.length, total);
+    const prec = precisionOf(frames);
+    const det = median(frames.flatMap(f => Object.values(f.timing.detect_ms)));
+    const secs = ((frames.length - 1) / FPS).toFixed(0);
+    $('#kpis').innerHTML = [
+      [episodes.length, '', `pedestrians and riders hidden from the car, revealed by the network in ${secs} s`],
+      [prec ?? '—', prec != null ? '%' : '', 'of these alerts point at a real road user (checked against the simulator)'],
+      [det != null ? Math.round(det) : '—', 'ms', 'to analyse one camera image on this server'],
+    ].map(([v, u, k]) => `<div><div class="v">${v}<small>${u}</small></div><div class="k">${k}</div></div>`).join('');
+    const sm = info?.summary;
+    if (sm) {
+      const when = new Date(sm.computed_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      status(`Computed on this server at ${when} · ${frames.length} frames from ${1 + sm.sources.length} cameras · scene: CARLA digital twin (V2X-Sim 2.0, Apache-2.0)`);
     }
-    const th = ui.querySelector('#thumbs');
-    const others = Object.keys(m.cams).filter(c => c !== m.ego);
-    if (th.children.length !== others.length) {
-      th.innerHTML = '';
-      for (const c of others) th.append(h(`<div class="instrument" data-c="${c}"><img alt=""><canvas class="overlay"></canvas><span class="tag">${esc(camLabel(c))}</span></div>`));
-    }
-    for (const node of th.children) {
-      const c = node.dataset.c, im = node.querySelector('img');
-      im.src = `/demo/v2xsim/frames/${m.cams[c].img}`;
-      const d = () => drawThumb(node.querySelector('canvas'), m.cams[c].tracks, 800);
-      if (im.complete) d(); else im.onload = d;
-    }
-    if (!bev.view) bev.fit([...m.cams[m.ego].fov, ...others.map(c => m.cams[c].pos)], 4);
-    const cams = Object.fromEntries(Object.entries(m.cams).map(([c, v]) => [c, { ...v, label: c === m.ego ? 'EGO' : '' }]));
-    drawWorld(bev, { cams, ego: m.ego, objects: m.view.objects, gt: m.gt, showGt: ui.querySelector('#gt').checked });
-    ui.querySelector('#alerts').innerHTML = alertsHtml(m.view.alerts, camLabel);
-    const tm = m.timing;
-    ui.querySelector('#timing').innerHTML = `<table class="kv"><tbody>
-      ${Object.entries(tm.detect_ms).map(([c, v]) => `<tr><th>${esc(camLabel(c))}</th><td>${v} ms</td></tr>`).join('')}
-      <tr><th>Fusion + reasoning</th><td>${tm.fusion_ms} ms</td></tr>
-      <tr><th>All cameras, one CPU</th><td>${tm.frame_total_ms} ms</td></tr>
-      <tr><th>One edge device per camera</th><td>≈ ${Math.round(tm.detect_parallel_ms + tm.fusion_ms)} ms + network</td></tr></tbody></table>`;
-    const seenHidden = new Set(), seenVru = new Set();
-    for (const f of frames.slice(0, i + 1)) for (const a of f.view.alerts) if (a.status === 'occluded') { seenHidden.add(a.gid); if (a.vru) seenVru.add(a.gid); }
-    ui.querySelector('#kpis').innerHTML = figure(m.view.own_tracks.length, '', 'objects the ego camera sees') +
-      figure(m.view.objects.filter(x => x.status !== 'out_of_view').length, '', 'objects known after fusion') +
-      figure(seenHidden.size, '', 'hidden objects revealed so far') + figure(seenVru.size, '', 'of them vulnerable');
   }
 
-  ui.querySelector('#gt').onchange = () => show(cur);
-  ui.querySelector('#scrub').oninput = e => { stopPlay(); show(+e.target.value); };
-  const stopPlay = () => { clearInterval(timer); timer = 0; ui.querySelector('#play').textContent = 'Replay'; };
-  ui.querySelector('#play').onclick = () => {
-    if (timer) return stopPlay();
-    ui.querySelector('#play').textContent = 'Pause';
-    let i = cur >= frames.length - 1 ? 0 : cur;
-    timer = setInterval(() => { show(i); i++; if (i >= frames.length) stopPlay(); }, 200);
-  };
-  ui.querySelector('#run').onclick = async () => {
-    stopPlay();
+  async function loadCached() {
+    if (job) { job.cancel(); job = null; }
+    clearInterval(poll);
+    const { ego, sources } = config();
+    try {
+      const r = await api(`/api/v1/guardian/demo/cached?ego=${ego}&sources=${sources.join(',')}`);
+      if (!r.ready) throw new Error('not ready');
+      frames = r.frames; total = frames.length; info = { source: 'cache', summary: r.summary };
+      frames.forEach(m => { img(m.cams[m.ego].img); for (const c of sources) if (m.cams[c]) img(m.cams[c].img); });
+      $('#cta').classList.add('hidden');
+      live = false; shown = -1; lastSeen = null;
+      finalize();
+      t = episodes.length ? Math.max(0, episodes[0].t0 - 1) : 0;
+      setPlaying(true);
+    } catch {
+      frames = []; total = scene?.n_frames || 60; shown = -1; info = null; episodes = [];
+      tl.setEpisodes([], 0, total);
+      $('#ego-img').src = `/demo/v2xsim/frames/${scene?.preview?.[ego] || ''}`;
+      $('#cta').classList.remove('hidden');
+      drawHUD($('#hud'), null, 800);
+      status('Not computed for this setting yet. A live run processes every frame on this server.');
+      poll = setInterval(async () => { try { const r = await api(`/api/v1/guardian/demo/cached?ego=${ego}&sources=${sources.join(',')}`); if (r.ready) { clearInterval(poll); loadCached(); } } catch {} }, 4000);
+      setTimeout(() => clearInterval(poll), 150000);
+    }
+  }
+
+  async function runLive() {
     if (job) job.cancel();
-    frames = []; bev.view = null;
-    const ego = ui.querySelector('#ego').value;
-    const sources = [...ui.querySelectorAll('#srcs input:checked')].map(i => i.value)
-      .flatMap(v => v === 'V2V' ? [ego === 'CAM_FRONT_id_1' ? 'CAM_FRONT_id_4' : 'CAM_FRONT_id_1'] : [v]);
-    ui.querySelector('#run').disabled = true;
-    ui.querySelector('#alerts').innerHTML = '<p class="faint">Processing on the server…</p>';
+    clearInterval(poll);
+    const { ego, sources } = config();
+    frames = []; total = scene?.n_frames || 60; live = true; shown = -1; lastSeen = null; setPlaying(false);
+    $('#cta').classList.add('hidden'); $('#prog').classList.remove('hidden'); $('#run').disabled = true;
+    status('Starting the pipeline on the server…');
     try {
       const r = await api('/api/v1/guardian/demo/run', { method: 'POST', json: { ego, sources } });
       job = streamJob(r.job_id, {
-        frame: m => { frames.push(m); if (!timer) show(frames.length - 1); },
-        progress: p => { ui.querySelector('#pbar').style.width = `${Math.round(p * 100)}%`; },
-        done: () => {
-          ui.querySelector('#run').disabled = false;
-          const sc = ui.querySelector('#scrub'); sc.max = frames.length - 1; sc.disabled = false;
-          ui.querySelector('#play').disabled = false;
+        frame: m => {
+          frames.push(m);
+          img(m.cams[m.ego].img);
+          tl.setEpisodes(episodesOf(frames), frames.length, total);
+          status(`Computing live on this server: frame ${frames.length} of ${total} (${(m.timing.frame_total_ms / 1000).toFixed(1)} s for ${1 + sources.length} cameras)`);
         },
-        error: e => { ui.querySelector('#run').disabled = false; ui.querySelector('#alerts').innerHTML = `<p class="error">${esc(e)}</p>`; },
+        progress: p => { $('#prog').firstElementChild.style.width = `${Math.round(p * 100)}%`; },
+        done: res => { job = null; live = false; info = { source: 'live', summary: res }; $('#prog').classList.add('hidden'); $('#run').disabled = false; finalize(); t = 0; shown = -1; setPlaying(true); },
+        error: e => { job = null; live = false; $('#prog').classList.add('hidden'); $('#run').disabled = false; status(`Error: ${e}`); },
       });
-    } catch (e) { ui.querySelector('#run').disabled = false; ui.querySelector('#alerts').innerHTML = `<p class="error">${esc(e.message)}</p>`; }
+    } catch (e) { live = false; $('#prog').classList.add('hidden'); $('#run').disabled = false; status(`Error: ${e.message}`); }
+  }
+
+  function setPlaying(v) { if (v && t >= tMax() - 1e-6) t = 0; playing = v && frames.length > 1; }
+  function seek(frac, at) {
+    if (!frames.length) return;
+    t = Math.min(tMax(), at != null ? at : frac * (total - 1) / FPS);
+    setPlaying(false);
+  }
+  function step(k) { t = Math.max(0, Math.min(tMax(), Math.round(t * FPS + k) / FPS)); setPlaying(false); }
+
+  function showFrame(i) {
+    const m = frames[i];
+    const egoImg = img(m.cams[m.ego].img);
+    if ($('#ego-img').dataset.src !== egoImg.src) { $('#ego-img').src = egoImg.src; $('#ego-img').dataset.src = egoImg.src; }
+    drawHUD($('#hud'), m.view, 800, { network, clean: true });
+    const hid = m.view.objects.filter(isKey).sort((a, b) => a.dist_m - b.dist_m);
+    // the camera that actually sees the hidden road user
+    const focus = hid[0];
+    if (focus) {
+      const src = (focus.sources || []).find(c => c !== m.ego && m.cams[c]);
+      if (src) lastSeen = { cam: src, gid: focus.gid };
+    }
+    const sb = $('#seenby');
+    const cam = lastSeen?.cam || config().sources.find(c => m.cams[c]);
+    if (cam && m.cams[cam]) {
+      const th = img(m.cams[cam].img);
+      const im = sb.querySelector('img');
+      if (im.dataset.src !== th.src) { im.src = th.src; im.dataset.src = th.src; }
+      const shared = new Set(network ? m.view.objects.filter(o => isKey(o) && o.members && o.members[cam] != null).map(o => o.members[cam]) : []);
+      const onlyShared = m.cams[cam].tracks.filter(tr => shared.has(tr.id));
+      drawThumbHUD(sb.querySelector('canvas'), onlyShared, 800, shared, !network);
+      sb.classList.toggle('off', !network);
+      $('#seen-cap').textContent = network ? `Seen by the ${plain(cam)}` : 'Network off: not shared with the car';
+    }
+    const bar = $('#bar');
+    if (!network) {
+      bar.className = 'alertbar calm';
+      bar.querySelector('span').innerHTML = '<b>Network off.</b> The car only knows what its own camera sees.';
+    } else if (focus) {
+      const more = hid.length > 1 ? ` <span style="color:#b9bcc2">+${hid.length - 1} more</span>` : '';
+      bar.className = 'alertbar';
+      bar.querySelector('span').innerHTML = `<b>${esc(pretty(focus.cls))} ${Math.round(focus.dist_m)} m ahead${focus.occluded_by ? `, behind a ${esc(pretty(focus.occluded_by.cls).toLowerCase())}` : ''}.</b> The car cannot see it; the ${esc(plain((focus.sources || []).find(c => c !== m.ego) || ''))} can.${more}`;
+    } else {
+      bar.className = 'alertbar calm';
+      bar.querySelector('span').innerHTML = 'Nothing hidden from this car right now.';
+    }
+  }
+
+  function renderMap(i, a, clock) {
+    const m = frames[i], n = frames[Math.min(i + 1, frames.length - 1)];
+    const lerp = (p, q) => [p[0] + (q[0] - p[0]) * a, p[1] + (q[1] - p[1]) * a];
+    const nx = new Map(n.view.objects.map(o => [o.gid, o]));
+    const objects = m.view.objects.map(o => { const q = nx.get(o.gid); return q && a > 0 ? { ...o, xy: lerp(o.xy, q.xy) } : o; });
+    let gt = null;
+    if (showGt) {
+      const ng = new Map(n.gt.map(g => [g.id, g]));
+      gt = m.gt.map(g => { const q = ng.get(g.id); return q && a > 0 ? { ...g, xy: lerp(g.xy, q.xy) } : g; });
+    }
+    const cams = Object.entries(m.cams).map(([id, c]) => {
+      const q = n.cams[id];
+      const kind = id === m.ego ? 'ego' : RSU_CAMS.includes(id) ? 'rsu' : 'veh';
+      return { id, kind, pos: q && a > 0 ? lerp(c.pos, q.pos) : c.pos, yaw: c.yaw, fov: c.fov,
+        label: kind === 'ego' ? 'THE CAR' : kind === 'rsu' ? 'INTERSECTION CAMERA' : camLabel(id).replace(' · front', '').toUpperCase() };
+    });
+    map.render({ cams, objects, gt, network, clock, clean: true, chip: network ? null : 'NETWORK OFF' });
+  }
+
+  function tick(ts) {
+    const dt = lastTs ? Math.min(0.1, (ts - lastTs) / 1000) : 0;
+    lastTs = ts;
+    if (frames.length) {
+      if (playing && !live) { t += dt; if (t >= tMax()) { t = tMax(); playing = false; } }
+      let i, a;
+      if (live) { i = frames.length - 1; a = 0; t = i / FPS; }
+      else { const x = t * FPS; i = Math.max(0, Math.min(frames.length - 1, Math.floor(x + 1e-6))); a = playing ? Math.min(1, Math.max(0, x - i)) : 0; }
+      if (i !== shown) { showFrame(i); shown = i; }
+      renderMap(i, a, ts / 1000);
+      tl.set(i + a, total, playing, t, Math.max(0, (total - 1) / FPS));
+    } else {
+      map.render({ cams: [], objects: [], network, clock: ts / 1000, clean: true });
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  const toggleNet = () => {
+    network = !network;
+    $('#net').classList.toggle('on', network); $('#net').setAttribute('aria-pressed', String(network));
+    $('#netlbl').textContent = network ? 'Network on' : 'Network off';
+    shown = -1;
   };
-  const onResize = () => frames.length && show(cur);
+  const toggleGt = () => { showGt = !showGt; $('#gt').classList.toggle('on', showGt); };
+  const present = () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    (ui.requestFullscreen || ui.webkitRequestFullscreen)?.call(ui);
+  };
+  const onFs = () => { $('#present').textContent = document.fullscreenElement ? 'Exit' : 'Present'; shown = -1; };
+  $('#net').onclick = toggleNet;
+  $('#gt').onclick = toggleGt;
+  $('#present').onclick = present;
+  $('#run').onclick = runLive;
+  $('#cta-run').onclick = runLive;
+  $('#opts').onclick = () => { const open = $('#settings').classList.toggle('hidden') === false; $('#opts').setAttribute('aria-expanded', String(open)); };
+  $('#ego').onchange = () => { buildSources(); loadCached(); };
+  const onKey = e => {
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+    const r = ui.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) return;
+    if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+    else if (e.key === 'n' || e.key === 'N') toggleNet();
+    else if (e.key === 'g' || e.key === 'G') toggleGt();
+    else if (e.key === 'f' || e.key === 'F') present();
+  };
+  window.addEventListener('keydown', onKey);
+  document.addEventListener('fullscreenchange', onFs);
+  const onResize = () => { shown = -1; };
   window.addEventListener('resize', onResize);
-  return () => { stopPlay(); if (job) job.cancel(); window.removeEventListener('resize', onResize); };
+
+  api('/api/v1/guardian/demo/scene').then(s => {
+    scene = s;
+    total = s.n_frames;
+    const base = s.map || s.ortho;
+    if (base) map.setBase(`/demo/v2xsim/${base.file}`, base.bbox);
+    buildSources();
+    loadCached();
+  }).catch(e => status(`Error: ${e.message}`));
+  raf = requestAnimationFrame(tick);
+
+  return () => {
+    if (job) job.cancel();
+    clearInterval(poll);
+    cancelAnimationFrame(raf);
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', onResize);
+    document.removeEventListener('fullscreenchange', onFs);
+  };
 }
 
 // ------------------------------------------------------------------ calibration helper
@@ -364,7 +536,7 @@ function videos(pane) {
   </div>`);
   pane.append(ui);
   const cams = { A: {}, B: {} };
-  const bev = new BEV(ui.querySelector('#bev'));
+  const bev = new TwinMap(ui.querySelector('#bev'));
   let frames = [], job = null, raf = 0;
   const ready = () => { ui.querySelector('#run').disabled = !(cams.A.pts?.length === 4 && cams.B.pts?.length === 4); };
   const calibJson = k => ({ width: cams[k].w, height: cams[k].h, image_points: cams[k].pts, rect_w: +ui.querySelector('#rw').value, rect_l: +ui.querySelector('#rl').value });
@@ -436,7 +608,7 @@ function videos(pane) {
           if (hidden.length) bar.querySelector('span').textContent = `${hidden.length} hidden: ${hidden.map(a => pretty(a.cls)).join(', ')}`;
         }
         if (!bev.view) bev.fit([...m.fov.A, ...m.fov.B], 3);
-        drawWorld(bev, { cams: { A: { fov: m.fov.A, pos: m.pos.A, label: 'A' }, B: { fov: m.fov.B, pos: m.pos.B, label: 'B' } }, ego: 'A', objects: m.views.A.objects });
+        drawWorld(bev, { cams: { A: { fov: m.fov.A, pos: m.pos.A, yaw: m.pose?.A?.yaw, label: 'camera A' }, B: { fov: m.fov.B, pos: m.pos.B, yaw: m.pose?.B?.yaw, label: 'camera B' } }, ego: 'A', objects: m.views.A.objects, chip: 'YOUR TWO VIDEOS · GROUND PLANE' });
         ui.querySelector('#objs').innerHTML = m.views.A.objects.map(o => `${esc(pretty(o.cls))} g${o.gid} · (${o.xy[0]}, ${o.xy[1]}) m · ±${o.r2s} m · ${o.sources.join('+')} · ${o.status} for A`).join('<br>') || 'no objects';
       }
       const vB = ui.querySelector('#camB .play video');
@@ -498,12 +670,12 @@ function live(pane, args) {
     work.innerHTML = '';
     const v = h(`<div class="work"><canvas class="bev" id="bev"></canvas><div class="panel"><span class="label">Alerts per camera</span><div id="va"></div></div></div>`);
     work.append(v);
-    const bev = new BEV(v.querySelector('#bev'));
+    const bev = new TwinMap(v.querySelector('#bev'));
     connect(m => {
       if (m.type === 'welcome') ws.send(JSON.stringify({ type: 'hello', role: 'viewer' }));
       if (m.type !== 'world') return;
       const pts = Object.values(m.cams).flatMap(c => c.fov || []);
-      if (pts.length) { bev.fit(pts, 2); drawWorld(bev, { cams: Object.fromEntries(Object.entries(m.cams).map(([k, c]) => [k, { ...c, label: k }])), objects: m.objects.map(o => ({ ...o, status: 'visible' })) }); }
+      if (pts.length) { bev.fit(pts, 2); drawWorld(bev, { cams: Object.fromEntries(Object.entries(m.cams).map(([k, c]) => [k, { ...c, label: `camera ${k}` }])), objects: m.objects.map(o => ({ ...o, status: 'visible' })), chip: 'LIVE ROOM · GROUND PLANE' }); }
       v.querySelector('#va').innerHTML = Object.entries(m.alerts).map(([c, a]) => `<span class="label" style="display:block;margin:.6rem 0 .2rem">camera ${esc(c)}</span>${alertsHtml(a, x => 'camera ' + x)}`).join('');
     });
   }
