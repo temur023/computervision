@@ -10,7 +10,7 @@ Mode: **Startup** · Track: Computer Vision · Partners in scope: Yandex (map an
 | | |
 |---|---|
 | Live prototype | `https://huggingface.co/spaces/<org>/swarmsight` (deployed from this repository by GitHub Actions, see [Deploy](#deploy)) |
-| Defence deck | `docs/SwarmSight_defence.pptx` |
+| Defence deck | Slides artifact, exported to PPTX/PDF for submission (`docs/` once exported) |
 | Data sources and licences | [below](#data-sources-and-licences) and [`docs/data_registry.json`](docs/data_registry.json) |
 
 ---
