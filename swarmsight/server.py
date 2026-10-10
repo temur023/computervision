@@ -658,19 +658,21 @@ def guardian_demo_cached(ego: str = "CAM_FRONT_id_1", sources: str = "CAM_id_0_0
 
 
 @app.post("/api/v1/guardian/videos")
-async def guardian_videos(video_a: UploadFile = File(...), video_b: UploadFile = File(...), calib_a: str = Form(...),
-                          calib_b: str = Form(...), offset_s: float = Form(0.0), sample_fps: float = Form(5.0),
+async def guardian_videos(video_a: UploadFile = File(...), video_b: UploadFile | None = File(None), calib_a: str = Form(...),
+                          calib_b: str | None = Form(None), offset_s: float = Form(0.0), sample_fps: float = Form(5.0),
                           max_seconds: float = Form(60.0), ttl_s: float = Form(1.0)):
-    """Two static cameras looking at the same ground area. calib_* are CalibIn JSON objects."""
+    """One or two static cameras looking at the same ground area (calib_* are CalibIn JSON objects).  With one camera
+    you get tracks in metres, speeds and CrossGuard's predicted conflicts between road users; with two, also fusion."""
     S.load()
+    two = video_b is not None and calib_b is not None
     geos = {}
-    for k, raw in (("A", calib_a), ("B", calib_b)):
+    for k, raw in (("A", calib_a), ("B", calib_b)) if two else (("A", calib_a),):
         try:
             geos[k] = _calib_from(CalibIn(**json.loads(raw)))
         except (json.JSONDecodeError, TypeError, ValueError) as e:
             raise HTTPException(400, f"bad calibration for camera {k}: {e}")
     paths = {}
-    for k, f in (("A", video_a), ("B", video_b)):
+    for k, f in (("A", video_a), ("B", video_b)) if two else (("A", video_a),):
         data = await _read_upload(f, MAX_VIDEO_BYTES)
         p = UPLOAD_DIR / f"{uuid.uuid4().hex}{Path(f.filename or 'v.mp4').suffix or '.mp4'}"
         p.write_bytes(data)
@@ -683,9 +685,10 @@ async def guardian_videos(video_a: UploadFile = File(...), video_b: UploadFile =
             caps = {k: cv2.VideoCapture(str(p)) for k, p in paths.items()}
             fps = {k: (c.get(cv2.CAP_PROP_FPS) or 30.0) for k, c in caps.items()}
             dur = {k: (c.get(cv2.CAP_PROP_FRAME_COUNT) or 0) / fps[k] for k, c in caps.items()}
-            T = min(max_seconds, min(dur["A"], dur["B"] - offset_s) if all(dur.values()) else max_seconds)
+            cams = ["A", "B"] if two else ["A"]
+            T = min(max_seconds, min(dur["A"], dur["B"] - offset_s) if two else dur["A"]) if all(dur.values()) else max_seconds
             scene = GuardianScene(ttl=ttl_s)
-            for k in ("A", "B"):
+            for k in cams:
                 scene.add_camera(k, geos[k])
                 if geos[k].width != int(caps[k].get(cv2.CAP_PROP_FRAME_WIDTH)):
                     job.emit({"type": "warning", "message": f"camera {k}: calibration width {geos[k].width} differs from video width"})
@@ -698,14 +701,14 @@ async def guardian_videos(video_a: UploadFile = File(...), video_b: UploadFile =
                 t = i / sample_fps
                 out = {}
                 t_frame = time.perf_counter()
-                for k, tk in (("B", t + offset_s), ("A", t)):
+                for k, tk in (("B", t + offset_s), ("A", t)) if two else (("A", t),):
                     img = _read_at(caps[k], fps[k], tk, cursor)
                     if img is None:
                         continue
                     d = det(img)
                     scene.ingest(k, d, t)
                     out[k] = {"tracks": scene.nodes[k].last_tracks}
-                views = {k: scene.view_for(k, t) for k in ("A", "B")}
+                views = {k: scene.view_for(k, t) for k in cams}
                 total = (time.perf_counter() - t_frame) * 1e3
                 S.latency.append(("guardian_frame", total))
                 job.progress = (i + 1) / n

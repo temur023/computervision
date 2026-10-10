@@ -29,7 +29,7 @@ export default async function guardian(root, args) {
 
     <section class="section" style="border-top:0">
       <div class="row between" style="margin-bottom:1.2rem">
-        <div class="seg" id="tabs"><button data-t="real">Real crash · Tashkent</button><button data-t="demo">Digital twin</button><button data-t="videos">Your two videos</button><button data-t="live">Two phones, live</button></div>
+        <div class="seg" id="tabs"><button data-t="real">Real crash · Tashkent</button><button data-t="demo">Digital twin</button><button data-t="videos">Your video</button><button data-t="live">Two phones, live</button></div>
         <span class="faint" style="font-size:.86rem">Everything below is computed by our server.</span>
       </div>
       <div id="pane"></div>
@@ -133,10 +133,10 @@ export default async function guardian(root, args) {
 // ------------------------------------------------------------------ drawing shared by the three modes
 function drawCamView(canvas, view, srcW, camLabel) { drawHUD(canvas, view, srcW, { camLabel }); }
 function drawThumb(canvas, tracks, srcW) { drawThumbHUD(canvas, tracks, srcW); }
-function drawWorld(map, { cams = {}, ego, objects = [], gt = [], showGt = true, chip = 'LIVE · YOUR CAMERAS' }) {
+function drawWorld(map, { cams = {}, ego, objects = [], gt = [], showGt = true, chip = 'LIVE · YOUR CAMERAS', conflicts = null }) {
   const list = Object.entries(cams).filter(([, c]) => c && c.pos)
     .map(([id, c]) => ({ id, kind: id === ego ? 'fixed-ego' : 'rsu', pos: c.pos, yaw: c.yaw ?? 0, fov: c.fov, label: (c.label || `camera ${id}`).toUpperCase() }));
-  map.render({ cams: list, objects, gt: showGt ? gt : null, network: true, clock: performance.now() / 1000, chip });
+  map.render({ cams: list, objects, gt: showGt ? gt : null, network: true, clock: performance.now() / 1000, chip, conflicts, clean: conflicts != null });
 }
 
 function alertsHtml(alerts, camLabel) {
@@ -550,31 +550,34 @@ const CALIB_HELP = `Tap four points on the ground that form a rectangle you can 
 // ------------------------------------------------------------------ two uploaded videos
 function videos(pane) {
   const ui = h(`<div class="stack">
-    <p class="note">${CALIB_HELP} The rectangle defines the shared ground frame in metres. Both cameras must be static.</p>
+    <p class="note">${CALIB_HELP} The rectangle defines the ground frame in metres. One static camera is enough for tracks in metres,
+      speeds and CrossGuard's predicted conflicts; add a second camera of the same area to fuse the two views.</p>
     <div class="row" style="gap:1rem">
       <label class="field"><span>Width 1→2, m</span><input type="number" id="rw" value="2.5" step="0.1" min="0.2"></label>
       <label class="field"><span>Length 2→3, m</span><input type="number" id="rl" value="5.0" step="0.1" min="0.2"></label>
       <label class="field"><span>B starts later by, s</span><input type="number" id="off" value="0" step="0.1"></label>
-      <button class="btn primary" id="run" disabled style="align-self:flex-end">Fuse on server <span class="arr">→</span></button>
+      <button class="btn primary" id="run" disabled style="align-self:flex-end">Analyse on server <span class="arr">→</span></button>
     </div>
     <div class="progress"><div id="pbar"></div></div>
     <div class="cols c2">
       ${['A', 'B'].map(k => `<div class="stack" id="cam${k}">
-        <span class="label">Camera ${k}</span>
-        <label class="drop" style="min-height:110px"><input type="file" accept="video/*"><b>Choose video ${k}</b><span class="faint">static camera, same scene</span></label>
+        <span class="label">Camera ${k}${k === 'B' ? ' · optional' : ''}</span>
+        <label class="drop" style="min-height:110px"><input type="file" accept="video/*"><b>Choose video ${k}</b><span class="faint">${k === 'A' ? 'a static camera over a street or crossing' : 'a second static view of the same area'}</span></label>
         <div class="calib"></div>
         <p class="mono faint geo" style="font-size:.78rem"></p>
         <div class="instrument hidden play"><video playsinline muted></video><canvas class="overlay"></canvas><span class="tag">camera ${k}</span><div class="alertbar hidden"><i></i><span></span></div></div>
         <div class="alerts"></div>
       </div>`).join('')}
     </div>
-    <div class="work"><canvas class="bev" id="bev"></canvas><div class="panel"><span class="label">Fused objects</span><div id="objs" class="mono faint" style="font-size:.8rem">—</div></div></div>
+    <div class="work"><canvas class="bev" id="bev"></canvas><div class="stack"><div class="panel"><span class="label">CrossGuard</span><div id="cg" class="faint" style="font-size:.88rem">—</div></div>
+      <div class="panel"><span class="label">Road users</span><div id="objs" class="mono faint" style="font-size:.8rem">—</div></div></div></div>
   </div>`);
   pane.append(ui);
   const cams = { A: {}, B: {} };
   const bev = new TwinMap(ui.querySelector('#bev'));
   let frames = [], job = null, raf = 0;
-  const ready = () => { ui.querySelector('#run').disabled = !(cams.A.pts?.length === 4 && cams.B.pts?.length === 4); };
+  const useB = () => !!cams.B.file;
+  const ready = () => { ui.querySelector('#run').disabled = !(cams.A.pts?.length === 4 && (!useB() || cams.B.pts?.length === 4)); };
   const calibJson = k => ({ width: cams[k].w, height: cams[k].h, image_points: cams[k].pts, rect_w: +ui.querySelector('#rw').value, rect_l: +ui.querySelector('#rl').value });
 
   for (const k of ['A', 'B']) {
@@ -608,20 +611,20 @@ function videos(pane) {
     if (job) job.cancel();
     frames = []; bev.view = null;
     const fd = new FormData();
-    fd.append('video_a', cams.A.file); fd.append('video_b', cams.B.file);
-    fd.append('calib_a', JSON.stringify(calibJson('A'))); fd.append('calib_b', JSON.stringify(calibJson('B')));
+    fd.append('video_a', cams.A.file); fd.append('calib_a', JSON.stringify(calibJson('A')));
+    if (useB()) { fd.append('video_b', cams.B.file); fd.append('calib_b', JSON.stringify(calibJson('B'))); }
     fd.append('offset_s', ui.querySelector('#off').value);
     ui.querySelector('#run').disabled = true;
     try {
       const r = await api('/api/v1/guardian/videos', { method: 'POST', body: fd });
-      for (const k of ['A', 'B']) { const box = ui.querySelector(`#cam${k}`); box.querySelector('.calib').classList.add('hidden'); box.querySelector('.play').classList.remove('hidden'); }
+      for (const k of useB() ? ['A', 'B'] : ['A']) { const box = ui.querySelector(`#cam${k}`); box.querySelector('.calib').classList.add('hidden'); box.querySelector('.play').classList.remove('hidden'); }
       job = streamJob(r.job_id, {
         frame: m => frames.push(m),
         progress: p => { ui.querySelector('#pbar').style.width = `${Math.round(p * 100)}%`; },
         warning: w => { ui.querySelector('#objs').textContent = w; },
         done: () => {
           ui.querySelector('#run').disabled = false;
-          for (const k of ['A', 'B']) { const v = ui.querySelector(`#cam${k} .play video`); v.currentTime = k === 'B' ? +ui.querySelector('#off').value : 0; v.play().catch(() => {}); }
+          for (const k of useB() ? ['A', 'B'] : ['A']) { const v = ui.querySelector(`#cam${k} .play video`); v.currentTime = k === 'B' ? +ui.querySelector('#off').value : 0; v.play().catch(() => {}); }
         },
         error: e => { ui.querySelector('#run').disabled = false; ui.querySelector('#objs').innerHTML = `<span class="error">${esc(e)}</span>`; },
       });
@@ -634,7 +637,7 @@ function videos(pane) {
       const t = vA.currentTime;
       let m = null; for (const f of frames) { if (f.t <= t + 0.05) m = f; else break; }
       if (m) {
-        for (const k of ['A', 'B']) {
+        for (const k of Object.keys(m.views)) {
           const box = ui.querySelector(`#cam${k}`);
           drawCamView(box.querySelector('.play canvas'), m.views[k], cams[k].w, c => `camera ${c}`);
           box.querySelector('.alerts').innerHTML = alertsHtml(m.views[k].alerts, c => `camera ${c}`);
@@ -643,9 +646,13 @@ function videos(pane) {
           bar.classList.toggle('hidden', !hidden.length);
           if (hidden.length) bar.querySelector('span').textContent = `${hidden.length} hidden: ${hidden.map(a => pretty(a.cls)).join(', ')}`;
         }
-        if (!bev.view) bev.fit([...m.fov.A, ...m.fov.B], 3);
-        drawWorld(bev, { cams: { A: { fov: m.fov.A, pos: m.pos.A, yaw: m.pose?.A?.yaw, label: 'camera A' }, B: { fov: m.fov.B, pos: m.pos.B, yaw: m.pose?.B?.yaw, label: 'camera B' } }, ego: 'A', objects: m.views.A.objects, chip: 'YOUR TWO VIDEOS · GROUND PLANE' });
-        ui.querySelector('#objs').innerHTML = m.views.A.objects.map(o => `${esc(pretty(o.cls))} g${o.gid} · (${o.xy[0]}, ${o.xy[1]}) m · ±${o.r2s} m · ${o.sources.join('+')} · ${o.status} for A`).join('<br>') || 'no objects';
+        if (!bev.view) bev.fit(Object.values(m.fov).flat(), 3);
+        const cg = m.views.A.crossguard?.assessments || [];
+        drawWorld(bev, { cams: Object.fromEntries(Object.keys(m.fov).map(k => [k, { fov: m.fov[k], pos: m.pos[k], yaw: m.pose?.[k]?.yaw, label: `camera ${k}` }])),
+          ego: 'A', objects: m.views.A.objects, chip: 'YOUR VIDEO · GROUND PLANE', conflicts: cg });
+        ui.querySelector('#cg').innerHTML = cg.length ? cg.slice(0, 3).map(r => `<div style="margin-bottom:.5rem"><span class="status ${r.level === 'high' ? 's-rejected' : 's-candidate'}">${r.level}</span> ${esc(r.reason)}</div>`).join('')
+          : 'No conflict predicted in the next 4 s.';
+        ui.querySelector('#objs').innerHTML = m.views.A.objects.map(o => `${esc(pretty(o.cls))} g${o.gid} · ${Math.round(Math.hypot(o.v[0], o.v[1]) * 3.6)} km/h · ±${o.r2s} m${o.sources.length > 1 ? ' · both cameras' : ''}`).join('<br>') || 'no objects';
       }
       const vB = ui.querySelector('#camB .play video');
       const want = t + +ui.querySelector('#off').value;
