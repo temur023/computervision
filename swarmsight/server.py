@@ -105,6 +105,17 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.add_middleware(GZipMiddleware, minimum_size=2048)
 
 
+@app.middleware("http")
+async def revalidate_web_assets(request, call_next):
+    """Pages, scripts and styles are revalidated on every load (304 if unchanged), so an update is never hidden by
+    the browser cache.  Demo frames and map tiles keep normal caching."""
+    resp = await call_next(request)
+    p = request.url.path
+    if p == "/" or p.endswith((".html", ".js", ".css")):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 # ----------------------------------------------------------------------------- helpers
 def _decode_image(data: bytes) -> tuple[np.ndarray, dict]:
     """Decode an upload, apply EXIF orientation, extract GPS + capture time if present."""
