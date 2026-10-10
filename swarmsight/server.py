@@ -262,6 +262,20 @@ def health():
     }
 
 
+@app.get("/api/v1/data")
+def data_registry():
+    """Dataset cards (source, licence, splits, how labels were made), with live counts where available."""
+    reg = json.loads((ROOT / "docs" / "data_registry.json").read_text())
+    tk = ROOT / "docs" / "tashkent_testset.json"
+    if tk.exists():
+        info = json.loads(tk.read_text())
+        for d in reg["datasets"]:
+            if d["id"] == "tashkent":
+                d["used"] = info.get("counts")
+                d["status"] = info.get("status", d.get("status"))
+    return reg
+
+
 @app.get("/api/v1/metrics")
 def metrics():
     out = {}

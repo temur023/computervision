@@ -58,39 +58,60 @@ export function streamJob(jobId, handlers) {
   return { cancel: () => { try { ws.close(); } catch {} api(`/api/v1/jobs/${jobId}`, { method: 'DELETE' }).catch(() => {}); } };
 }
 
-export const CLS_COLOR = {
-  person: '#f87171', cyclist: '#fb923c', motorcyclist: '#f472b6', bicycle: '#fb923c', motorcycle: '#f472b6',
-  car: '#38bdf8', truck: '#60a5fa', bus: '#818cf8', vehicle: '#38bdf8', two_wheeler: '#fb923c',
-  pothole: '#ef4444', alligator_crack: '#f97316', transverse_crack: '#facc15', longitudinal_crack: '#eab308',
-  'traffic light': '#a3e635', 'stop sign': '#a3e635',
+// Colour encodes the kind of information, never the object class (the class is in the label).
+export const C = {
+  own: '#e9e7e2',        // seen by this camera
+  hazard: '#f0a030',     // road damage, time-to-contact warnings
+  network: '#7b9bff',    // observation delivered by another camera
+  critical: '#ff5a4a',   // hidden vulnerable road user
+  verified: '#3fbf86',
+  muted: '#8b9099',
 };
-export const color = c => CLS_COLOR[c] || '#cbd5e1';
 export const VRU = new Set(['person', 'cyclist', 'motorcyclist', 'bicycle', 'motorcycle']);
+export const DAMAGE = new Set(['pothole', 'alligator_crack', 'transverse_crack', 'longitudinal_crack']);
 export const PRETTY = {
   pothole: 'Pothole', alligator_crack: 'Alligator crack', transverse_crack: 'Transverse crack', longitudinal_crack: 'Longitudinal crack',
   person: 'Pedestrian', cyclist: 'Cyclist', motorcyclist: 'Motorcyclist', car: 'Car', truck: 'Truck', bus: 'Bus',
-  bicycle: 'Bicycle', motorcycle: 'Motorcycle',
+  bicycle: 'Bicycle', motorcycle: 'Motorcycle', vehicle: 'Vehicle', two_wheeler: 'Two-wheeler',
 };
 export const pretty = c => PRETTY[c] || c;
+// Back-compat for modules that colour by class: map classes onto information kinds.
+export const color = c => DAMAGE.has(c) ? C.hazard : C.own;
 
-// Draw labelled boxes. scale maps source px -> canvas px.
-export function drawBox(ctx, box, label, col, { dashed = false, scale = 1, lw = 2, fill = false } = {}) {
+// Box styles: 'corners' (own detection), 'dashed' (network observation), 'fill' (hazard area).
+export function drawBox(ctx, box, label, col, { dashed = false, scale = 1, lw = 1.5, fill = false, corners = !dashed && !fill } = {}) {
+  const dpr = window.devicePixelRatio || 1;
   const [x1, y1, x2, y2] = box.map(v => v * scale);
+  const w = x2 - x1, hgt = y2 - y1;
   ctx.save();
   ctx.strokeStyle = col;
-  ctx.lineWidth = lw;
-  if (dashed) ctx.setLineDash([6, 4]);
-  if (fill) { ctx.fillStyle = col + '33'; ctx.fillRect(x1, y1, x2 - x1, y2 - y1); }
-  ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+  ctx.lineWidth = lw * dpr;
+  if (fill) { ctx.fillStyle = col + '2e'; ctx.fillRect(x1, y1, w, hgt); }
+  if (corners) {
+    const k = Math.max(6 * dpr, Math.min(w, hgt) * 0.22);
+    ctx.beginPath();
+    for (const [px, py, dx, dy] of [[x1, y1, 1, 1], [x2, y1, -1, 1], [x2, y2, -1, -1], [x1, y2, 1, -1]]) {
+      ctx.moveTo(px + dx * k, py); ctx.lineTo(px, py); ctx.lineTo(px, py + dy * k);
+    }
+    ctx.stroke();
+  } else {
+    if (dashed) ctx.setLineDash([5 * dpr, 4 * dpr]);
+    ctx.strokeRect(x1, y1, w, hgt);
+  }
   if (label) {
     ctx.setLineDash([]);
-    ctx.font = '600 12px system-ui, sans-serif';
-    const w = ctx.measureText(label).width + 8;
-    const ty = y1 > 18 ? y1 - 17 : y1 + 1;
+    const fs = 10.5 * dpr;
+    ctx.font = `500 ${fs}px "Geist Mono", ui-monospace, monospace`;
+    const text = label.toUpperCase();
+    const tw = ctx.measureText(text).width + 10 * dpr;
+    const th = fs + 8 * dpr;
+    const ty = y1 > th + 2 ? y1 - th - 2 : y1 + 2;
+    ctx.fillStyle = 'rgba(13,15,18,.82)';
+    ctx.fillRect(x1, ty, tw, th);
     ctx.fillStyle = col;
-    ctx.fillRect(x1, ty, w, 16);
-    ctx.fillStyle = '#0b1220';
-    ctx.fillText(label, x1 + 4, ty + 12);
+    ctx.fillRect(x1, ty, 2 * dpr, th);
+    ctx.fillStyle = '#e9e7e2';
+    ctx.fillText(text, x1 + 6 * dpr, ty + fs + 2 * dpr);
   }
   ctx.restore();
 }
@@ -115,6 +136,10 @@ export function deviceId() {
     if (!id) { id = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('swarmsight.device', id); }
     return id;
   } catch { return 'web-anon'; }
+}
+
+export function figure(v, unit, k, src) {
+  return `<div class="figure"><div class="v">${v ?? '—'}${unit && v != null ? `<small>${unit}</small>` : ''}</div><div class="k">${k}</div>${src ? `<div class="src">${src}</div>` : ''}</div>`;
 }
 
 export function fmtTime(ts) {

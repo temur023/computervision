@@ -1,19 +1,20 @@
 import { $, $$, api } from './util.js';
 import home from './home.js';
-import scan from './scan.js';
 import guardian from './guardian.js';
 import road from './road.js';
 import charge from './charge.js';
-import metrics from './metrics.js';
+import data from './metrics.js';
 
-const routes = { '': home, scan, guardian, road, charge, metrics };
+const routes = { '': home, guardian, road, charge, data };
+const aliases = { scan: 'road', metrics: 'data' };
 let cleanup = null;
 
 async function render() {
-  const [route, ...rest] = location.hash.replace(/^#\/?/, '').split('/');
+  let [route, ...rest] = location.hash.replace(/^#\/?/, '').split('/');
+  route = aliases[route] ?? route;
   const view = routes[route] || home;
   if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
-  $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.route === route));
+  $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.route === (routes[route] ? route : '')));
   const root = $('#view');
   root.innerHTML = '';
   window.scrollTo(0, 0);
@@ -21,16 +22,15 @@ async function render() {
 }
 
 async function status() {
-  const chip = $('#status-chip');
+  const el = $('#server');
   try {
     const s = await api('/api/v1/health');
-    const n = Object.keys(s.models).length;
-    chip.textContent = `server ok · ${n} model${n === 1 ? '' : 's'} · ${s.hardware.cpu_count} CPU`;
-    chip.className = 'status-chip ok';
-    chip.title = Object.entries(s.models).map(([k, m]) => `${k}: ${m.file}`).join('\n');
+    el.className = 'server ok';
+    el.querySelector('span').textContent = `server · ${s.hardware.cpu_count} vCPU · ${Object.keys(s.models).length} models`;
+    el.title = Object.entries(s.models).map(([k, m]) => `${k}: ${m.file}`).join('\n');
   } catch {
-    chip.textContent = 'server unreachable';
-    chip.className = 'status-chip bad';
+    el.className = 'server bad';
+    el.querySelector('span').textContent = 'server unreachable';
   }
 }
 
