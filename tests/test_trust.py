@@ -36,3 +36,12 @@ def test_moderation_updates_source_reliability_and_feed():
     te.review(e2["id"], "verify")
     feats = te.geojson(("verified",))["features"]
     assert len(feats) == 1 and "phone-2" not in str(feats)
+
+
+def test_damage_severity_is_a_plain_float_for_numpy_boxes():
+    import json
+    import numpy as np
+    from swarmsight.trust import damage_severity
+    sev = damage_severity("pothole", np.array([100, 300, 220, 380], np.float32), 800, 450, np.float32(0.7))
+    assert type(sev) is float and 0 < sev <= 1
+    json.dumps({"severity": sev})

@@ -64,7 +64,8 @@ def damage_severity(cls: str, bbox, img_w: int, img_h: int, conf: float) -> floa
     area = max(0.0, (x2 - x1) * (y2 - y1)) / float(img_w * img_h)
     size = min(1.0, math.sqrt(area) / 0.35)
     proximity = min(1.0, max(0.0, y2 / img_h))
-    return round(min(1.0, base * (0.55 + 0.25 * size + 0.2 * proximity) * (0.7 + 0.3 * conf)), 3)
+    # plain float: boxes arrive as numpy arrays, and numpy scalars do not serialise to JSON
+    return round(float(min(1.0, base * (0.55 + 0.25 * size + 0.2 * proximity) * (0.7 + 0.3 * conf))), 3)
 
 
 def severity_label(s: float) -> str:
