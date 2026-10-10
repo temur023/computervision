@@ -1,0 +1,8 @@
+.git
+runtime
+runs
+data
+**/__pycache__
+tests
+training
+*.pt

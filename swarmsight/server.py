@@ -16,6 +16,7 @@ import time
 import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import cv2
@@ -49,10 +50,6 @@ MAX_IMAGE_BYTES = 30 * 1024 * 1024
 for d in (MEDIA_DIR, UPLOAD_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="SwarmSight AI", version=__version__,
-              description="Collective vision for connected mobility: Guardian (cooperative perception), "
-                          "Road Intelligence (verified road events) and ChargePulse (EV bay occupancy).")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 class State:
@@ -77,9 +74,16 @@ class State:
 S = State()
 
 
-@app.on_event("startup")
-def _startup():
+@asynccontextmanager
+async def lifespan(_app):
     S.load()
+    yield
+
+
+app = FastAPI(title="SwarmSight AI", version=__version__,
+              lifespan=lifespan, description="Collective vision for connected mobility: Guardian (cooperative perception), "
+                          "Road Intelligence (verified road events) and ChargePulse (EV bay occupancy).")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 # ----------------------------------------------------------------------------- helpers

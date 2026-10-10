@@ -1,0 +1,12 @@
+# Training, evaluation and tests (not needed by the deployed service)
+-r requirements.txt
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+ultralytics>=8.3
+onnx
+onnxslim
+huggingface_hub
+requests
+pytest==9.1.1
+httpx==0.28.1
