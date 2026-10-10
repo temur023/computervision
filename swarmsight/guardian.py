@@ -379,6 +379,7 @@ class GuardianScene:
                 "age_ms": round(age * 1e3),
                 "conf": round(g.conf, 2),
                 "trail": g.trail[-12:],
+                "members": {c: int(lid) for c, lid in g.members.items() if c in sources},
             }
             if seen_here:
                 rec["status"] = "visible"

@@ -498,6 +498,14 @@ def fov_polygon(cam: CameraGeometry, max_range: float = 45.0, n: int = 12) -> li
     return [[round(float(c[0]), 2), round(float(c[1]), 2)]] + pts
 
 
+def cam_pose2d(cam: CameraGeometry) -> dict:
+    """Ground position, heading of the optical axis (rad, world frame) and horizontal field of view."""
+    fwd = cam.R.T @ np.array([0.0, 0.0, 1.0])
+    hfov = 2 * np.arctan(cam.width / (2 * cam.K[0, 0])) if cam.K is not None else 1.2
+    return {"pos": [round(float(v), 2) for v in cam.center_ground], "yaw": round(float(np.arctan2(fwd[1], fwd[0])), 4),
+            "hfov": round(float(hfov), 4), "height_m": round(cam.height_m, 2)}
+
+
 def _demo_scene() -> dict:
     p = DEMO_DIR / "v2xsim" / "scene.json"
     if not p.exists():
@@ -551,8 +559,7 @@ def guardian_demo_run(req: DemoIn):
                 d = det(img)
                 det_ms[c] = round((time.perf_counter() - t0) * 1e3, 1)
                 scene.ingest(c, d, t, geo)
-                cam_out[c] = {"img": cd["img"], "tracks": scene.nodes[c].last_tracks, "fov": fov_polygon(geo),
-                              "pos": [round(float(v), 2) for v in geo.center_ground]}
+                cam_out[c] = {"img": cd["img"], "tracks": scene.nodes[c].last_tracks, "fov": fov_polygon(geo), **cam_pose2d(geo)}
             t_fuse = time.perf_counter()
             view = scene.view_for(req.ego, t)
             fuse_ms = (time.perf_counter() - t_fuse) * 1e3 + scene.timing.get("fusion_ms", 0)
@@ -624,6 +631,7 @@ async def guardian_videos(video_a: UploadFile = File(...), video_b: UploadFile =
                 job.progress = (i + 1) / n
                 job.emit({"type": "frame", "i": i, "t": round(t, 3), "cams": out, "views": views, "fov": fovs,
                           "pos": {k: [round(float(v), 2) for v in geos[k].center_ground] for k in geos},
+                          "pose": {k: cam_pose2d(geos[k]) for k in geos},
                           "timing": {"frame_total_ms": round(total, 1)}})
             return {"frames": n, "geometry": {k: g.describe() for k, g in geos.items()}}
         finally:
@@ -754,9 +762,8 @@ async def guardian_room(ws: WebSocket, room: str):
                         elif role.get("role") == "viewer":
                             objs = [{"gid": g.gid, "cls": g.cls, "xy": [round(float(g.x[0]), 2), round(float(g.x[1]), 2)],
                                      "sources": sorted(g.seen)} for g in r.scene.fusion.objects.values()]
-                            cams = {c: {"pos": [round(float(v), 2) for v in n.geometry.center_ground] if n.geometry else None,
-                                        "fov": fov_polygon(n.geometry) if n.geometry else None, "tracks": n.last_tracks}
-                                    for c, n in r.scene.nodes.items()}
+                            cams = {c: ({**cam_pose2d(n.geometry), "fov": fov_polygon(n.geometry)} if n.geometry else {"pos": None, "fov": None})
+                                        | {"tracks": n.last_tracks} for c, n in r.scene.nodes.items()}
                             await ows.send_text(json.dumps({"type": "world", "objects": objs, "cams": cams,
                                                             "alerts": {c: r.scene.view_for(c, now / 1e3)["alerts"]
                                                                        for c, n in r.scene.nodes.items() if n.geometry},
@@ -1049,6 +1056,14 @@ def charger_observations(site: str | None = None, limit: int = 200):
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 if (ROOT / "datasets" / "tashkent" / "images").exists():
     app.mount("/datasets/tashkent/images", StaticFiles(directory=str(ROOT / "datasets" / "tashkent" / "images")), name="tashkent")
+@app.get("/demo/v2xsim/ortho.jpg", include_in_schema=False)
+def demo_ortho():
+    p = DEMO_DIR / "v2xsim" / "ortho.jpg"
+    if not p.exists():
+        raise HTTPException(404, "orthophoto not built")
+    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
 if (DEMO_DIR / "v2xsim" / "frames").exists():
     app.mount("/demo/v2xsim/frames", StaticFiles(directory=str(DEMO_DIR / "v2xsim" / "frames")), name="demo")
 if WEB_DIR.exists():
