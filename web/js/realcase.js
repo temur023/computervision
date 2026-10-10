@@ -1,6 +1,15 @@
 // Real case: a crash at a Tashkent crossing, reconstructed from one dashcam, and what CrossGuard would have done.
 import { api, C, drawBox, esc, fitCanvas, h } from './util.js';
 
+// a short code per browser: a phone that opens #/driver/<code> receives this console's warnings
+function channelCode() {
+  try {
+    let c = localStorage.getItem('swarmsight.channel');
+    if (!c) { c = Math.random().toString(36).slice(2, 6); localStorage.setItem('swarmsight.channel', c); }
+    return c;
+  } catch { return 'demo'; }
+}
+
 const FPS = 8;
 const fmt = t => `${t.toFixed(2)} s`;
 
@@ -11,6 +20,7 @@ export function realCase(pane) {
       <div class="ctl">
         <button class="netswitch" id="cf" aria-pressed="false" title="With a camera at the crossing (C)"><span class="knob"></span><span id="cflbl">Crossing camera off</span></button>
         <span class="ctl hidden" id="ranges"></span>
+        <a class="chip" id="phone" target="_blank" rel="noopener" title="Open on a phone: it beeps when the warning goes out"></a>
         <button class="btn" id="present">Present</button>
       </div>
     </div>
@@ -36,7 +46,27 @@ export function realCase(pane) {
   </div>`);
   pane.append(ui);
   const $ = s => ui.querySelector(s);
-  let data = null, i = 0, playing = false, cf = false, raf = 0, last = 0, acc = 0, map = null, layers = null, range = 100;
+  let data = null, i = 0, playing = false, cf = false, raf = 0, last = 0, acc = 0, map = null, layers = null, range = 100, sentAt = -1;
+  const channel = channelCode();
+  $('#phone').href = `#/driver/${channel}`;
+  $('#phone').textContent = `Phone: ${location.host}/#/driver/${channel}`;
+  // the warning goes out over the same channel a crossing camera would use: /api/v1/alerts/{channel}
+  function publish(f) {
+    const m = data.motorcycle, c = scn();
+    let a = null, key = '';
+    if (cf && c.t_warn != null && f.t >= c.t_warn && f.t < data.impact_t) {
+      key = `cf-${range}`;
+      a = { kind: 'collision_risk', level: 'high', cls: 'motorcyclist', ttc_s: Math.max(0, data.impact_t - f.t), bearing_deg: 270, speed_kmh: m.speed_kmh,
+        ttl_s: 3, action: c.action || 'Brake now', text: c.warning.reason, lat: data.impact[0], lon: data.impact[1], source: `crossing camera, ${range} m` };
+    } else if (!cf && f.t >= m.visible_from_t && f.t < data.impact_t) {
+      key = 'dashcam';
+      a = { kind: 'collision_risk', level: 'high', cls: 'motorcyclist', ttc_s: Math.max(0, data.impact_t - f.t), bearing_deg: 270, speed_kmh: m.speed_kmh,
+        ttl_s: 2, action: 'Brake', text: 'Seen by this car only now: too late to react.', source: 'own dashcam' };
+    }
+    if (!a || sentAt === key) return;
+    sentAt = key;
+    api(`/api/v1/alerts/${channel}`, { method: 'POST', json: a }).catch(() => {});
+  }
   const scn = () => data.counterfactual.scenarios.find(x => x.range_m === range) || data.counterfactual.scenarios[0];
   const imgs = [];
 
@@ -115,6 +145,8 @@ export function realCase(pane) {
       else { ctx.save(); ctx.globalAlpha = 0.45; drawBox(ctx, tr.bbox, '', C.own, { scale: s, lw: 1.1 }); ctx.restore(); }
     }
     if (f.moto_box) drawBox(ctx, f.moto_box, 'motorcycle · annotated', C.critical, { scale: s, lw: 2, dashed: true });
+    if (playing) publish(f);
+    if (f.t < 25) sentAt = -1;
     const [text, cls] = narrative(f.t);
     $('#bar').className = cls;
     $('#bar').querySelector('span').innerHTML = text;

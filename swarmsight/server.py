@@ -24,7 +24,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import ExifTags, Image, ImageOps
 from pydantic import BaseModel, Field
@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from . import __version__
 from .chargepulse import ChargePulse
 from .incident import reconstruct as reconstruct_incident
+from .alerts import decode_ble, encode_ble, normalise as normalise_alert, to_denm, to_gpx
 from .detector import MODELS_DIR, Detections, load_default_detectors
 from .geometry import CameraGeometry
 from .guardian import GuardianScene, Observation, compose_road_users
@@ -66,6 +67,7 @@ class State:
         self.live_pool = ThreadPoolExecutor(max_workers=int(os.environ.get("SWARMSIGHT_LIVE_WORKERS", "2")))
         self.latency = deque(maxlen=500)  # (kind, ms)
         self.demo_cache: dict[str, dict] = {}
+        self.alert_subs: dict[str, set] = {}  # warning channel -> connected displays and devices
         self.started = time.time()
 
     def load(self):
@@ -952,6 +954,60 @@ def list_road_events(status: str = "verified", format: str = "geojson", bbox: st
     S.trust.expire()
     rows = S.store.events(f"status IN ({','.join('?' * len(statuses))})", statuses)
     return {"events": rows}
+
+
+@app.get("/api/v1/road-events/export.gpx")
+def export_road_events_gpx(status: str = "verified"):
+    """Verified road hazards as GPX waypoints: the format navigators and radar-detector POI databases import."""
+    statuses = tuple(s for s in status.split(",") if s in ("candidate", "corroborated", "verified")) or ("verified",)
+    S.trust.expire()
+    rows = S.store.events(f"status IN ({','.join('?' * len(statuses))})", statuses)
+    return Response(to_gpx(rows), media_type="application/gpx+xml",
+                    headers={"Content-Disposition": "attachment; filename=swarmsight-road-hazards.gpx"})
+
+
+# ----------------------------------------------------------------------------- warning delivery
+CHANNEL_RE = re.compile(r"^[a-z0-9-]{1,32}$")
+
+
+@app.post("/api/v1/alerts/{channel}")
+async def publish_alert(channel: str, body: dict):
+    """Publish a warning to every display and device listening on `channel`; returns it in each device format."""
+    if not CHANNEL_RE.match(channel):
+        raise HTTPException(400, "channel: 1-32 characters a-z 0-9 -")
+    try:
+        a = normalise_alert(body)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e))
+    frame = encode_ble(a)
+    msg = {"type": "alert", "alert": a, "ble_hex": frame.hex(" "), "ble_decoded": decode_ble(frame), "denm": to_denm(a)}
+    dead = []
+    for ws in list(S.alert_subs.get(channel, ())):
+        try:
+            await ws.send_json(msg)
+        except Exception:
+            dead.append(ws)
+    for ws in dead:
+        S.alert_subs.get(channel, set()).discard(ws)
+    msg["delivered_to"] = len(S.alert_subs.get(channel, ()))
+    return msg
+
+
+@app.websocket("/ws/alerts/{channel}")
+async def alert_stream(ws: WebSocket, channel: str):
+    await ws.accept()
+    if not CHANNEL_RE.match(channel):
+        await ws.close(code=4400)
+        return
+    S.alert_subs.setdefault(channel, set()).add(ws)
+    await ws.send_json({"type": "hello", "channel": channel, "listeners": len(S.alert_subs[channel])})
+    try:
+        while True:
+            await ws.receive_text()  # keep-alive pings from the display
+    except WebSocketDisconnect:
+        pass
+    finally:
+        S.alert_subs.get(channel, set()).discard(ws)
 
 
 @app.get("/api/v1/road-events/{eid}")

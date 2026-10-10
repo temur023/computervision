@@ -4,8 +4,9 @@ import guardian from './guardian.js';
 import road from './road.js';
 import charge from './charge.js';
 import data from './metrics.js';
+import driver from './driver.js';
 
-const routes = { '': home, guardian, road, charge, data };
+const routes = { '': home, guardian, road, charge, data, driver };
 const aliases = { scan: 'road', metrics: 'data' };
 let cleanup = null;
 

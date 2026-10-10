@@ -36,6 +36,21 @@ export default async function guardian(root, args) {
     </section>
 
     <section class="section">
+      <div class="section-head"><span class="label">Warnings</span><div><h2>How a warning reaches the driver</h2>
+        <p class="muted">One alert, published once on a channel (<span class="mono">POST /api/v1/alerts/{channel}</span>), delivered in the format each device needs.</p></div></div>
+      <div class="scroll-x"><table class="tbl"><thead><tr><th>Device</th><th>Format</th><th>Status</th></tr></thead><tbody>
+        <tr><td><b>Phone on the dashboard</b><br><span class="faint" style="font-size:.84rem">full-screen warning, sound, vibration, voice</span></td>
+          <td class="mono" style="font-size:.8rem">JSON over WebSocket · <a href="#/driver/demo">open the driver display</a></td><td><span class="status s-verified">working</span></td></tr>
+        <tr><td><b>Bluetooth devices</b><br><span class="faint" style="font-size:.84rem">radar-detector-class displays, mirrors, helmets</span></td>
+          <td class="mono" style="font-size:.8rem">16-byte frame with CRC, one BLE notification; the phone relays it</td><td><span class="status s-corroborated">frame implemented · firmware needs a device partner</span></td></tr>
+        <tr><td><b>V2X road-side unit</b><br><span class="faint" style="font-size:.84rem">broadcast to connected cars at the crossing</span></td>
+          <td class="mono" style="font-size:.8rem">ETSI DENM content: cause 97 collision risk, 12 person on the road</td><td><span class="status s-corroborated">content implemented · needs a certified ITS stack</span></td></tr>
+        <tr><td><b>Navigators and radar-detector databases</b><br><span class="faint" style="font-size:.84rem">known dangerous places, verified potholes</span></td>
+          <td class="mono" style="font-size:.8rem"><a href="/api/v1/road-events/export.gpx" target="_blank" rel="noopener">GPX waypoints</a> · GeoJSON feed</td><td><span class="status s-verified">working</span></td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section class="section">
       <div class="section-head"><span class="label">Data</span><div><h2>A scene where ground truth knows who is hidden</h2>
         <p class="muted">${esc(v2x?.origin || '')}. Synthetic (CARLA), so there are no real people in it. We use it because it provides what
         real footage cannot: exact positions of every road user and, through segmentation and depth, which camera can actually see each one.</p></div></div>

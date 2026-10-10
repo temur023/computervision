@@ -414,3 +414,23 @@ details.more > summary:hover { color: var(--ink); }
 .maptag.crit { border-left-color: #ff5a4a; }
 .maptag.amber { border-left-color: #f0a030; }
 .console .tl .track .bars span { position: absolute; bottom: 0; }
+
+/* driver display (phone on the dashboard): the whole screen is the warning */
+body.bare .site-head, body.bare .site-foot { display: none; }
+body.bare { background: #0d0f12; }
+.driver { position: fixed; inset: 0; background: #0d0f12; color: #e9e7e2; display: flex; flex-direction: column; font-family: var(--sans); }
+.dtop { display: flex; justify-content: space-between; gap: 1rem; padding: 14px 18px; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #8b9099; }
+.dmain { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; transition: background .2s; }
+.dmain.high { background: #3a0d09; animation: dflash .5s steps(2) 6; }
+.dmain.caution { background: #2e1f06; }
+@keyframes dflash { 50% { background: #7a1a12; } }
+.dstate { font: 700 clamp(3rem, 14vw, 7rem)/1 var(--sans); letter-spacing: -.03em; }
+.dmain.high .dstate { color: #ff5a4a; }
+.dmain.caution .dstate { color: #f0a030; }
+.dsub { margin-top: 1.2rem; font-size: clamp(1.05rem, 4.5vw, 1.6rem); color: #b9bcc2; max-width: 30ch; line-height: 1.35; }
+.dsub b { color: #f3f1ec; }
+.dsub .dtext { display: inline-block; margin-top: .8rem; font-size: .7em; color: #8b9099; }
+.dfoot { display: grid; gap: 8px; padding: 14px 18px 22px; font-size: .78rem; color: #8b9099; }
+.dfoot .lbl { display: block; font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+.dfoot code { font: 12px var(--mono); color: #b9bcc2; word-break: break-all; }
+.dunlock { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: #e9e7e2; color: #0d0f12; border: 0; border-radius: 999px; padding: 12px 20px; font: 600 .95rem var(--sans); cursor: pointer; }
