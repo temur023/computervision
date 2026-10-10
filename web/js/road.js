@@ -20,16 +20,16 @@ export default async function road(root, args) {
       <div><span class="label">Problem · user</span><p>Defects reach road services through complaints, weeks late and duplicated.
         <b>Users:</b> city road service, Yandex Maps, taxi fleets.</p></div>
       <div><span class="label">Data</span><p><b>${rdd ? (rdd.used.train + rdd.used.val + rdd.used.test).toLocaleString('en') : '—'}</b> RDD2022 images from 6 countries (${esc(rdd?.license || '')}).
-        <b>Tashkent:</b> ${tash?.used ? `${tash.used.total ?? ''} Mapillary images labelled by us` : 'Mapillary street imagery, labelling in progress'}.</p></div>
+        <b>Tashkent:</b> ${tash?.used ? `${tash.used.test} Mapillary test images labelled by us` : 'Mapillary street imagery, labelled by us'}.</p></div>
       <div><span class="label">Model</span><p>YOLO11n <b>fine-tuned by us</b> on 4 damage classes, 512 px, ONNX Runtime on CPU.
         ByteTrack across frames, then the trust engine.</p></div>
       <div><span class="label">Measured</span><p>${rd ? `<b>mAP@.5 ${rd.test.map50.toFixed(3)}</b> on ${rd.n_test_images} held-out images · pothole AP ${rd.test.per_class.pothole.ap50.toFixed(3)}` : 'Held-out evaluation runs when training finishes.'}
-        ${tk ? `<br><b>Tashkent mAP@.5 ${tk.map50.toFixed(3)}</b> on ${tk.n_images} images` : '<br>Tashkent test set: in labelling.'}</p></div>
+        ${tk ? `<br><b>Tashkent: image-level AP ${tk.ap_image.toFixed(2)}</b>, precision ${(tk.precision_at_thr * 100).toFixed(0)}% / recall ${(tk.recall_at_thr * 100).toFixed(0)}% on ${tk.n_images} images` : '<br>Tashkent test set: labelled, evaluation pending.'}</p></div>
     </div>
 
     <section class="section" style="border-top:0">
       <div class="row between" style="margin-bottom:1.2rem">
-        <div class="seg" id="tabs"><button data-t="scan">Scan</button><button data-t="events">Events &amp; moderation</button></div>
+        <div class="seg" id="tabs"><button data-t="scan">Scan</button><button data-t="events">Events &amp; moderation</button><button data-t="review">Label review</button></div>
         <span class="faint" style="font-size:.86rem">Test it with your own photo or video. Nothing is pre-computed.</span>
       </div>
       <div id="pane"></div>
@@ -90,10 +90,10 @@ export default async function road(root, args) {
     if (cleanup) { cleanup(); cleanup = null; }
     root.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.t === t));
     pane.innerHTML = '';
-    cleanup = t === 'events' ? mountEvents(pane, rest[0] ? +rest[0] : null) : mountScan(pane);
+    cleanup = t === 'events' ? mountEvents(pane, rest[0] ? +rest[0] : null) : t === 'review' ? mountReview(pane) : mountScan(pane);
   };
   root.querySelector('#tabs').onclick = e => e.target.dataset.t && open(e.target.dataset.t);
-  open(args[0] === 'events' ? 'events' : 'scan', args.slice(1));
+  open(['events', 'review'].includes(args[0]) ? args[0] : 'scan', args.slice(1));
   return () => cleanup && cleanup();
 }
 
@@ -183,4 +183,109 @@ PATCH /api/v1/road-events/{id}/review        {"action": "verify" | "reject"}</pr
   ui.querySelector('#refresh').onclick = () => load(true);
   load(true).then(() => selected && showDetail(selected));
   return () => map.remove();
+}
+
+// Human verification of the Tashkent test labels (first pass made without model predictions).
+export function mountReview(container) {
+  const ui = h(`<div class="work">
+    <div class="stack">
+      <div class="row between">
+        <div class="seg" id="filter"><button data-f="todo" class="active">To review</button><button data-f="all">All</button><button data-f="disagree">Disagreements</button></div>
+        <span class="mono faint" id="pos" style="font-size:.8rem"></span>
+      </div>
+      <div class="instrument"><img id="img" alt="Tashkent street image" style="min-height:200px"><span class="tag" id="tag"></span></div>
+      <p class="note">Is road damage visible on the drivable surface ahead? Patches, sealed cracks, manholes and wet spots are not damage.
+        Mark "uncertain" when it cannot be judged (night, blur, rain on the glass) and "not a road" for shops, facades and interiors.
+        Keys: <span class="mono">Y</span> confirm first pass · <span class="mono">←/→</span> previous/next.</p>
+    </div>
+    <aside>
+      <div class="panel"><span class="label">Progress</span><div id="prog"></div></div>
+      <div class="panel"><span class="label">First pass</span><div id="first"></div></div>
+      <div class="panel"><span class="label">Your verdict</span>
+        <div class="stack" style="margin-top:.3rem">
+          <div class="seg" id="dmg"><button data-v="1">Damage</button><button data-v="0">No damage</button></div>
+          <div id="types" class="row"></div>
+          <div class="row"><label class="check"><input type="checkbox" id="unc"> uncertain</label><label class="check"><input type="checkbox" id="nr"> not a road</label></div>
+          <label class="field"><span>Reviewer</span><input type="text" id="who" placeholder="your name"></label>
+          <div class="row"><button class="btn" id="agree">Confirm first pass</button><button class="btn primary" id="save">Save verdict</button></div>
+          <div class="row"><button class="btn" id="prev">← Previous</button><button class="btn" id="next">Next →</button></div>
+          <p class="mono faint" id="msg" style="font-size:.78rem"></p>
+        </div>
+      </div>
+      <div class="panel"><span class="label">Export</span><p class="faint" style="font-size:.86rem">Merged labels (verified where reviewed) for the repository.</p>
+        <a class="btn" style="margin-top:.6rem" href="/api/v1/labels/tashkent/export">Download labels_test.json</a></div>
+    </aside>
+  </div>`);
+  container.append(ui);
+  let data = null, list = [], idx = 0, filter = 'todo', verdict = null;
+  const who = ui.querySelector('#who');
+  try { who.value = localStorage.getItem('swarmsight.reviewer') || ''; } catch {}
+  who.onchange = () => { try { localStorage.setItem('swarmsight.reviewer', who.value); } catch {} };
+
+  async function load(keepId) {
+    data = await api('/api/v1/labels/tashkent');
+    list = data.items.filter(i => filter === 'all' || (filter === 'todo' ? !i.review : i.review && !i.review.agrees));
+    idx = Math.max(0, keepId ? list.findIndex(i => i.id === keepId) : 0);
+    const p = data.progress;
+    ui.querySelector('#prog').innerHTML = `<div class="progress" style="margin:.2rem 0 .7rem"><div style="width:${100 * p.reviewed / p.total}%"></div></div>
+      <table class="kv"><tbody><tr><th>Reviewed</th><td>${p.reviewed} / ${p.total}</td></tr>
+      <tr><th>Agreement with first pass</th><td>${p.agreement == null ? '—' : (p.agreement * 100).toFixed(0) + '%'}</td></tr></tbody></table>`;
+    ui.querySelector('#types').innerHTML = data.types.map(t => `<label class="check"><input type="checkbox" value="${t}">${esc(pretty(t))}</label>`).join('');
+    ui.querySelectorAll('#types input').forEach(c => c.onchange = () => { verdict.types = [...ui.querySelectorAll('#types input:checked')].map(x => x.value); });
+    show();
+  }
+  function show() {
+    const it = list[idx];
+    ui.querySelector('#pos').textContent = list.length ? `${idx + 1} / ${list.length}` : 'nothing in this filter';
+    if (!it) { ui.querySelector('#img').removeAttribute('src'); ui.querySelector('#first').innerHTML = '<p class="faint">All done.</p>'; return; }
+    ui.querySelector('#img').src = it.image;
+    ui.querySelector('#tag').textContent = `${it.id} · ${it.captured_at ? new Date(it.captured_at * 1000).getFullYear() : ''}`;
+    const f = it.first_pass;
+    ui.querySelector('#first').innerHTML = `<table class="kv"><tbody>
+      <tr><th>Damage</th><td>${f.not_road ? 'not a road' : f.damage ? esc(f.types.map(pretty).join(', ')) : 'none'}</td></tr>
+      <tr><th>Uncertain</th><td>${f.uncertain ? 'yes' : 'no'}</td></tr>
+      <tr><th>Conditions</th><td>${esc(f.conditions.join(', ') || '—')}</td></tr>
+      ${it.review ? `<tr><th>Reviewed</th><td>${esc(it.review.reviewer)} · ${it.review.agrees ? 'agrees' : 'corrected'}</td></tr>` : ''}</tbody></table>
+      <a class="mono faint" style="font-size:.74rem" href="${esc(it.source)}" target="_blank" rel="noopener">source on Mapillary ↗</a>`;
+    const base = it.review || f;
+    verdict = { damage: base.damage, types: [...base.types], uncertain: base.uncertain, not_road: base.not_road };
+    paint();
+  }
+  function paint() {
+    ui.querySelectorAll('#dmg button').forEach(b => b.classList.toggle('active', (b.dataset.v === '1') === verdict.damage));
+    ui.querySelectorAll('#types input').forEach(c => { c.checked = verdict.types.includes(c.value); c.disabled = !verdict.damage; });
+    ui.querySelector('#unc').checked = verdict.uncertain;
+    ui.querySelector('#nr').checked = verdict.not_road;
+  }
+  async function save(v) {
+    const it = list[idx]; if (!it) return;
+    if (!who.value.trim()) { ui.querySelector('#msg').textContent = 'Enter your name as reviewer first.'; who.focus(); return; }
+    const r = await api(`/api/v1/labels/tashkent/${it.id}`, { method: 'PUT', json: { ...v, reviewer: who.value.trim() } });
+    ui.querySelector('#msg').textContent = r.agrees ? 'Saved: agrees with first pass.' : 'Saved: correction recorded.';
+    const nextId = list[idx + 1]?.id;
+    await load(filter === 'todo' ? nextId : it.id);
+    if (filter !== 'todo' && idx < list.length - 1) { idx++; show(); }
+  }
+  ui.querySelector('#dmg').onclick = e => { if (!e.target.dataset.v) return; verdict.damage = e.target.dataset.v === '1'; if (!verdict.damage) verdict.types = []; paint(); };
+  ui.querySelector('#unc').onchange = e => { verdict.uncertain = e.target.checked; };
+  ui.querySelector('#nr').onchange = e => { verdict.not_road = e.target.checked; };
+  ui.querySelector('#agree').onclick = () => { const f = list[idx]?.first_pass; if (f) save({ damage: f.damage, types: f.types, uncertain: f.uncertain, not_road: f.not_road }); };
+  ui.querySelector('#save').onclick = () => save(verdict);
+  ui.querySelector('#prev').onclick = () => { if (idx > 0) { idx--; show(); } };
+  ui.querySelector('#next').onclick = () => { if (idx < list.length - 1) { idx++; show(); } };
+  ui.querySelector('#filter').onclick = e => {
+    if (!e.target.dataset.f) return;
+    filter = e.target.dataset.f;
+    ui.querySelectorAll('#filter button').forEach(b => b.classList.toggle('active', b.dataset.f === filter));
+    load();
+  };
+  const onKey = e => {
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+    if (e.key === 'ArrowRight') ui.querySelector('#next').click();
+    else if (e.key === 'ArrowLeft') ui.querySelector('#prev').click();
+    else if (e.key === 'y' || e.key === 'Y') ui.querySelector('#agree').click();
+  };
+  window.addEventListener('keydown', onKey);
+  load();
+  return () => window.removeEventListener('keydown', onKey);
 }

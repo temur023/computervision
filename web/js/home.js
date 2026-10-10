@@ -30,7 +30,7 @@ export default async function home(root) {
         ${figure(coop ? `${coop['rsu+v2v'].overall['occluded_recall_fused_%']}` : null, '%', 'of road users <b>hidden from a car\'s own camera</b> recovered by the network (own camera alone: 0%)', 'V2X-Sim 2.0 · 285 ego-frames')}
         ${figure(coop ? `${coop.rsu.overall['recall_single_camera_%']}→${coop['rsu+v2v'].overall['recall_fused_%']}` : null, '%', 'road users known in the field of view: own camera → cooperative', 'V2X-Sim 2.0 · RSU + other vehicles')}
         ${figure(rd ? rd.test.map50.toFixed(2) : null, 'mAP@.5', 'road-damage detector we trained, on the held-out test split of 6 countries', rd ? `RDD2022 · ${rd.n_test_images} test images` : 'training in progress')}
-        ${figure(tk ? tk.map50.toFixed(2) : null, 'mAP@.5', 'the same detector on <b>Tashkent streets</b>, labelled by our team', tk ? `${tk.n_images} images · Mapillary` : 'local test set in labelling')}
+        ${figure(tk ? tk.ap_image.toFixed(2) : null, 'AP', `the same detector on <b>Tashkent streets</b>, image level${tk ? ` (random: ${(tk.n_positive / tk.n_images).toFixed(2)})` : ''}`, tk ? `${tk.n_images} images labelled by us · Mapillary` : 'local test set labelled, evaluation pending')}
       </div>
     </section>
 

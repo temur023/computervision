@@ -886,6 +886,85 @@ def list_sources():
     return {"sources": rows}
 
 
+# ----------------------------------------------------------------------------- label review (Tashkent test set)
+TASHKENT_DIR = ROOT / "datasets" / "tashkent"
+DAMAGE_TYPES = ["longitudinal_crack", "transverse_crack", "alligator_crack", "pothole"]
+
+
+def _tashkent():
+    labels = json.loads((TASHKENT_DIR / "labels_test.json").read_text())
+    meta = {m["id"]: m for m in json.loads((TASHKENT_DIR / "manifest.json").read_text())["images"]}
+    return labels, meta
+
+
+def _final_label(first: dict, review: dict | None) -> dict:
+    if not review:
+        return {k: first[k] for k in ("damage", "types", "uncertain", "not_road")} | {"verified_by": None}
+    return {"damage": bool(review["damage"]), "types": json.loads(review["types"]), "uncertain": bool(review["uncertain"]),
+            "not_road": bool(review["not_road"]), "verified_by": review["reviewer"]}
+
+
+@app.get("/api/v1/labels/tashkent")
+def tashkent_labels():
+    labels, meta = _tashkent()
+    reviews = {r["image_id"]: r for r in S.store.query("SELECT * FROM label_reviews WHERE dataset='tashkent'")}
+    items = []
+    for l in labels["labels"]:
+        m = meta.get(l["id"], {})
+        r = reviews.get(l["id"])
+        items.append({"id": l["id"], "image": f"/datasets/tashkent/images/{l['id']}.jpg", "lat": m.get("lat"), "lon": m.get("lon"),
+                      "captured_at": m.get("captured_at"), "source": m.get("source"),
+                      "first_pass": {k: l[k] for k in ("damage", "types", "uncertain", "not_road", "conditions")},
+                      "review": None if not r else {"damage": bool(r["damage"]), "types": json.loads(r["types"]), "uncertain": bool(r["uncertain"]),
+                                                    "not_road": bool(r["not_road"]), "reviewer": r["reviewer"], "note": r["note"],
+                                                    "agrees": bool(r["agrees"]), "updated_at": r["updated_at"]}})
+    reviewed = [i for i in items if i["review"]]
+    return {"protocol": labels["protocol"], "types": DAMAGE_TYPES, "items": items,
+            "progress": {"total": len(items), "reviewed": len(reviewed),
+                         "agreement": round(sum(i["review"]["agrees"] for i in reviewed) / len(reviewed), 3) if reviewed else None}}
+
+
+class ReviewLabelIn(BaseModel):
+    damage: bool
+    types: list[str] = []
+    uncertain: bool = False
+    not_road: bool = False
+    reviewer: str
+    note: str = ""
+
+
+@app.put("/api/v1/labels/tashkent/{image_id}")
+def review_tashkent_label(image_id: str, r: ReviewLabelIn):
+    labels, _ = _tashkent()
+    first = next((l for l in labels["labels"] if l["id"] == image_id), None)
+    if first is None:
+        raise HTTPException(404, "unknown image")
+    types = sorted({t for t in r.types if t in DAMAGE_TYPES}) if r.damage else []
+    reviewer = re.sub(r"[^\w .@-]", "", r.reviewer)[:40] or "anonymous"
+    agrees = (r.damage == first["damage"] and r.not_road == first["not_road"] and r.uncertain == first["uncertain"]
+              and (not r.damage or set(types) == set(first["types"])))
+    S.store.execute("INSERT OR REPLACE INTO label_reviews(dataset, image_id, damage, types, uncertain, not_road, reviewer, note, agrees, updated_at) "
+                    "VALUES ('tashkent',?,?,?,?,?,?,?,?,?)", (image_id, int(r.damage), json.dumps(types), int(r.uncertain), int(r.not_road),
+                                                            reviewer, r.note[:300], int(agrees), time.time()))
+    return {"ok": True, "agrees": agrees}
+
+
+@app.get("/api/v1/labels/tashkent/export")
+def export_tashkent_labels():
+    labels, _ = _tashkent()
+    reviews = {r["image_id"]: r for r in S.store.query("SELECT * FROM label_reviews WHERE dataset='tashkent'")}
+    out = dict(labels)
+    out["labels"] = []
+    for l in labels["labels"]:
+        r = reviews.get(l["id"])
+        f = _final_label(l, r)
+        out["labels"].append({**l, **{k: f[k] for k in ("damage", "types", "uncertain", "not_road")}, "verified_by": f["verified_by"],
+                              "first_pass_agrees": None if not r else bool(r["agrees"])})
+    n = sum(1 for l in out["labels"] if l["verified_by"])
+    out["protocol"] = {**labels["protocol"], "status": f"{n}/{len(out['labels'])} images verified by a human reviewer"}
+    return JSONResponse(out, headers={"Content-Disposition": "attachment; filename=labels_test.json"})
+
+
 # ----------------------------------------------------------------------------- ChargePulse
 @app.post("/api/v1/chargepulse/analyze")
 async def chargepulse_analyze(file: UploadFile = File(...), bays: str = Form(...), site: str = Form("demo-site"),
@@ -964,6 +1043,8 @@ def charger_observations(site: str | None = None, limit: int = 200):
 
 # ----------------------------------------------------------------------------- static
 app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
+if (ROOT / "datasets" / "tashkent" / "images").exists():
+    app.mount("/datasets/tashkent/images", StaticFiles(directory=str(ROOT / "datasets" / "tashkent" / "images")), name="tashkent")
 if (DEMO_DIR / "v2xsim" / "frames").exists():
     app.mount("/demo/v2xsim/frames", StaticFiles(directory=str(DEMO_DIR / "v2xsim" / "frames")), name="demo")
 if WEB_DIR.exists():

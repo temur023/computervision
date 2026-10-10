@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS charger_observations (
     observed_at REAL NOT NULL,
     source_id TEXT
 );
+CREATE TABLE IF NOT EXISTS label_reviews (
+    dataset TEXT NOT NULL,
+    image_id TEXT NOT NULL,
+    damage INTEGER NOT NULL,
+    types TEXT NOT NULL,
+    uncertain INTEGER NOT NULL,
+    not_road INTEGER NOT NULL,
+    reviewer TEXT NOT NULL,
+    note TEXT,
+    agrees INTEGER NOT NULL,
+    updated_at REAL NOT NULL,
+    PRIMARY KEY (dataset, image_id)
+);
 CREATE INDEX IF NOT EXISTS idx_events_type ON road_events(type, status);
 CREATE INDEX IF NOT EXISTS idx_obs_event ON observations(event_id);
 """

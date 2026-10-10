@@ -1,0 +1,10 @@
+{
+ "status": "test labelled (first pass), verification pending",
+ "counts": {
+  "train": null,
+  "val": null,
+  "test": 120,
+  "collected": 1449,
+  "published_test_images": 200
+ }
+}

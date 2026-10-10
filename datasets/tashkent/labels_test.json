@@ -1,0 +1,1519 @@
+{
+ "protocol": {
+  "unit": "image-level: is road damage visible on the drivable surface ahead, and of which RDD2022 types",
+  "classes": [
+   "longitudinal_crack",
+   "transverse_crack",
+   "alligator_crack",
+   "pothole"
+  ],
+  "excluded_from_metrics": "not_road (shop interiors, facades, ground close-ups) and uncertain (night, motion blur, rain on glass, roadside views)",
+  "not_damage": "patched/repaired areas, sealed cracks, manholes, wet patches, road markings wear",
+  "sample": "first 120 of a random sample from 31 held-out map tiles; labelled before any model prediction was seen",
+  "status": "first pass complete; human verification pending"
+ },
+ "labels": [
+  {
+   "id": "1004433782235597",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_occlusion",
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1006350011459301",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1021452245987598",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "low_sun_glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1021815369393694",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1022318291815845",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "dashboard_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1025482898093166",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_dirt"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1037769155242058",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "roadwork",
+    "low_sun"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1042673513017575",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "dusk",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1076604012933565",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1084688703020769",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1088001960448578",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1094331494814150",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "haze",
+    "windshield_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1113912164116203",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1129453204231139",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1135670557164808",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1138785725119302",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1140740800114192",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "dashboard_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "115637404351080",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1173396091533791",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "haze"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1176262947524528",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1179362772846289",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1179746728545407",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "parking_lot"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1184605759719720",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "low_sun_glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1185369125544253",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1217649329955406",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1225833402991312",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1226159199602064",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "dusk"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1230667029180454",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1244297227781260",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "roadside_view",
+    "low_sun"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1246371640976654",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic",
+    "low_sun"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1250358293737990",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1253664479505906",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "dusk"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1256199742594942",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1259008715602028",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1275444847765619",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "128784946492923",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "rain",
+    "windshield_drops"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1293931998053736",
+   "damage": true,
+   "types": [
+    "alligator_crack",
+    "pothole"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1294474555836660",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "interior_occlusion"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1303989343997336",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1324700965256301",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1335164901586493",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "134063756180605",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1364904180673332",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "wet_road",
+    "rain"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1367373730430266",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1371912960926317",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1374998049646800",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1380822016516077",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "phone_mount_occlusion"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1387342845063756",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "tunnel_shadow"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1397109032178118",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1400577720365085",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "140608811422541",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "141210702090994",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1415917852489674",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1417547286493453",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1418739589954108",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1425598999364618",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1455264162724690",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1455594109744862",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1463373760771360",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1467717151642971",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1472489413911141",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "147542198094744",
+   "damage": true,
+   "types": [
+    "pothole",
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast",
+    "color_cast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "148601661024767",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "pedestrian_view",
+    "glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1492404872440590",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1507543337456660",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1535592098214550",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1540784190342973",
+   "damage": true,
+   "types": [
+    "alligator_crack",
+    "pothole"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast",
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1575822593704189",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "low_sun_glare",
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "157632066382871",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1604445920677690",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1611199426971632",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1613989479543238",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1637240277974535",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1639070607792469",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1655742569202010",
+   "damage": true,
+   "types": [
+    "longitudinal_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1672219344133359",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1674012760631843",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1674598209567640",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1680761769743698",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1689520998880101",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "tunnel"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1702602794421456",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "roadside_view",
+    "roadwork"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "170992331986576",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "haze",
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1723623477989896",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1737899654274362",
+   "damage": true,
+   "types": [
+    "alligator_crack"
+   ],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "shadows"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1770885137447282",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1781362355742355",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1874315680637804",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1911192019583984",
+   "damage": true,
+   "types": [
+    "pothole"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "residential_street",
+    "pedestrian_view"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1927738091182100",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1976448969174189",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1978667466861537",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "1985895822336846",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2008045449580612",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": true,
+   "conditions": [
+    "ground_closeup",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2074905310026155",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2128674424636356",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2153347718833602",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2155321181628883",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2165963384237068",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "haze"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "228606075462004",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2330032144035582",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "low_sun_glare"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2419266805210061",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2494296697669223",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2505231743204973",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2546225962518029",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "25632385219773456",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "low_sun"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "25930966763254091",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night",
+    "motion_blur"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "26136923735929074",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "shadows",
+    "windshield_reflection"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "26354135914199276",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2643597479348552",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "26479149218345892",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "265819581895220",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2670584763234818",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "dusk"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "26954882527435800",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2813410345742941",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "28548095534827357",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": true,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "2885706918344913",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "3040400369590580",
+   "damage": true,
+   "types": [
+    "longitudinal_crack",
+    "transverse_crack",
+    "alligator_crack"
+   ],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "overcast",
+    "color_cast"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "3066522100203645",
+   "damage": false,
+   "types": [],
+   "uncertain": true,
+   "not_road": false,
+   "conditions": [
+    "night",
+    "traffic"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "307375557621679",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [
+    "windshield_tint"
+   ],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  },
+  {
+   "id": "310819833873550",
+   "damage": false,
+   "types": [],
+   "uncertain": false,
+   "not_road": false,
+   "conditions": [],
+   "labeler": "first pass: Claude (LLM vision, image-level, no model pre-labels)",
+   "verified_by": null
+  }
+ ]
+}

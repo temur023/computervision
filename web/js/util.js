@@ -171,16 +171,16 @@ export class BEV {
     const dpr = window.devicePixelRatio || 1;
     const W = Math.max(200, Math.round(r.width * dpr));
     const ctx = fitCanvas(this.c, W, W);
-    ctx.fillStyle = '#0a101c';
+    ctx.fillStyle = '#0d0f12';
     ctx.fillRect(0, 0, W, W);
     this.ctx = ctx; this.W = W; this.s = W / this.view.span;
     // 5 m grid
-    ctx.strokeStyle = '#16233b'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1b1f25'; ctx.lineWidth = 1;
     const x0 = this.view.cx - this.view.span / 2, y0 = this.view.cy - this.view.span / 2;
     for (let x = Math.ceil(x0 / 5) * 5; x < x0 + this.view.span; x += 5) { const [px] = this.p([x, 0]); ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, W); ctx.stroke(); }
     for (let y = Math.ceil(y0 / 5) * 5; y < y0 + this.view.span; y += 5) { const [, py] = this.p([0, y]); ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke(); }
-    ctx.fillStyle = '#5b6b88'; ctx.font = `${11 * (window.devicePixelRatio || 1)}px system-ui`;
-    ctx.fillText('grid 5 m', 8, W - 8);
+    ctx.fillStyle = '#5d626b'; ctx.font = `500 ${10 * (window.devicePixelRatio || 1)}px "Geist Mono", monospace`;
+    ctx.fillText('GRID 5 M · NORTH UP', 10, W - 10);
     return ctx;
   }
   p(xy) { return [(xy[0] - this.view.cx) * this.s + this.W / 2, this.W / 2 - (xy[1] - this.view.cy) * this.s]; }
@@ -194,9 +194,9 @@ export class BEV {
   }
   dot(xy, r, col, label, ring) {
     const ctx = this.ctx, [x, y] = this.p(xy), d = window.devicePixelRatio || 1;
-    if (ring) { ctx.beginPath(); ctx.arc(x, y, Math.max(ring * this.s, 3), 0, Math.PI * 2); ctx.strokeStyle = col + '88'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]); }
+    if (ring) { ctx.beginPath(); ctx.arc(x, y, Math.max(ring * this.s, 3), 0, Math.PI * 2); ctx.strokeStyle = col + '66'; ctx.lineWidth = d; ctx.setLineDash([3 * d, 3 * d]); ctx.stroke(); ctx.setLineDash([]); }
     ctx.beginPath(); ctx.arc(x, y, r * d, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-    if (label) { ctx.fillStyle = '#e6edf7'; ctx.font = `600 ${11 * d}px system-ui`; ctx.fillText(label, x + 7 * d, y - 6 * d); }
+    if (label) { ctx.fillStyle = '#e9e7e2'; ctx.font = `500 ${10 * d}px "Geist Mono", monospace`; ctx.fillText(label, x + 8 * d, y - 7 * d); }
   }
   box(xy, yaw, l, w, stroke) {
     const c = Math.cos(yaw), s = Math.sin(yaw);
@@ -207,6 +207,6 @@ export class BEV {
     if (!pts || pts.length < 2) return;
     const ctx = this.ctx; ctx.save(); ctx.beginPath();
     pts.forEach((q, i) => { const [x, y] = this.p(q); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-    ctx.strokeStyle = col + '99'; ctx.lineWidth = 1.5 * (window.devicePixelRatio || 1); ctx.stroke(); ctx.restore();
+    ctx.strokeStyle = col + '80'; ctx.lineWidth = 1.2 * (window.devicePixelRatio || 1); ctx.stroke(); ctx.restore();
   }
 }
