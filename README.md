@@ -64,11 +64,23 @@ speed ~130 km/h ±20 %) feeds CrossGuard as a camera at the crossing would have:
 it warns about 2 s before impact, and a driver reacting in 1.0 s stops short of the motorcycle's path; with 60 m it
 is too late. These are reconstruction numbers with stated assumptions, shown as such on the page.
 
-**Road damage**: the RDD2022 held-out test split (6 countries) and our Tashkent test set (image level). See
-`benchmarks/results/road_damage_eval.json` and `benchmarks/results/tashkent_eval.json`. The site shows the current
-values with per-class, per-country and robustness breakdowns.
+**Road damage, our YOLO11n** (12 epochs on CPU, 512 px) · `python training/eval_road_damage.py`, `python training/eval_tashkent.py`
 
-**Speed and cost**: `benchmarks/results/speed_cost.json` (per stage p50/p95, $ per 1000 frames, per camera-month, per km).
+| Test set | Metric | Value |
+|---|---|---:|
+| RDD2022 held-out test, 1,500 images, 6 countries | mAP@0.5, 4 classes | 0.480 |
+| | AP@0.5 potholes · alligator · transverse · longitudinal | 0.50 · 0.52 · 0.45 · 0.46 |
+| | per country | 0.13 (Norway, India) to 0.70 (China, motorbike) |
+| | synthetic night · rain · motion blur · JPEG q=15 | 0.20 · 0.25 · 0.08 · 0.32 |
+| Tashkent, 77 judgeable images labelled by us | image-level AP (random ranking 0.45) | 0.77 |
+| | precision / recall at the event threshold 0.25 | 81 % / 60 % |
+| | false alarms on 11 non-road images | 0 % |
+
+Motion blur is the weakest condition: a phone mount and a shorter exposure matter more than a bigger model.
+
+**Speed and cost, 4 vCPU x86_64 · ONNX Runtime CPU · measured 2026-10-10** · `python -m benchmarks.speed_cost`: both detectors 171.8 ms per frame (p50);
+Guardian tracking, fusion, reasoning and CrossGuard 126.3 ms for 5 cameras; compute about
+$1.288 per camera-month and $0.00072 per km scanned on a budget 4 vCPU VM (list-price assumption in the file).
 
 ## Architecture
 
