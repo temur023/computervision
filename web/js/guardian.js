@@ -199,6 +199,14 @@ function demo(pane) {
   </div>`);
   pane.append(ui);
   const bev = new BEV(ui.querySelector('#bev'));
+  (() => {  // placeholder until the first frame arrives
+    const cv = ui.querySelector('#bev'), d = window.devicePixelRatio || 1, w = Math.round(cv.getBoundingClientRect().width * d) || 600;
+    cv.width = w; cv.height = w;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#0d0f12'; ctx.fillRect(0, 0, w, w);
+    ctx.fillStyle = '#5d626b'; ctx.font = `500 ${11 * d}px "Geist Mono", monospace`; ctx.textAlign = 'center';
+    ctx.fillText('BIRD\'S-EYE VIEW · APPEARS WHEN THE SERVER RUNS', w / 2, w / 2);
+  })();
   let scene = null, job = null, frames = [], cur = 0, timer = 0;
   const camLabel = c => scene?.cameras?.[c] || c;
   const preview = () => { if (scene && !frames.length) ui.querySelector('#ego-img').src = `/demo/v2xsim/frames/${scene.preview[ui.querySelector('#ego').value]}`; };
