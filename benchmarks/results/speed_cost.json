@@ -1,0 +1,46 @@
+{
+  "hardware": "4 vCPU x86_64 \u00b7 ONNX Runtime CPU \u00b7 measured 2026-10-10",
+  "stages": {
+    "JPEG decode (800x450)": {
+      "p50": 2.9,
+      "p95": 3.5
+    },
+    "Road users, YOLO11n 640 px": {
+      "p50": 76.5,
+      "p95": 87.1
+    },
+    "Road damage, our YOLO11n 512 px": {
+      "p50": 64.4,
+      "p95": 86.5
+    },
+    "Scan: both detectors per frame": {
+      "p50": 171.8,
+      "p95": 213.0
+    },
+    "Guardian: tracking + fusion + reasoning, 5 cameras": {
+      "p50": 126.3,
+      "p95": 164.6
+    }
+  },
+  "cost": [
+    {
+      "name": "Budget cloud VM, 4 vCPU",
+      "basis": "assumption: ~\u20ac16/month list price for a 4 vCPU / 8 GB VM (Hetzner CPX31 class)",
+      "usd_per_hour": 0.025,
+      "fps": 5.8,
+      "usd_per_1000_frames": 0.00119,
+      "usd_per_camera_month": 1.288,
+      "usd_per_km_scanned": 0.00072
+    },
+    {
+      "name": "Hyperscaler VM, 4 vCPU",
+      "basis": "assumption: on-demand list price of a 4 vCPU compute-optimised instance (AWS c7i.xlarge class)",
+      "usd_per_hour": 0.17,
+      "fps": 5.8,
+      "usd_per_1000_frames": 0.00811,
+      "usd_per_camera_month": 8.76,
+      "usd_per_km_scanned": 0.00487
+    }
+  ],
+  "note": "Throughput is measured (single process, one frame at a time). Cost per camera-month assumes 1 analysed frame per second for 10 hours a day; cost per km assumes 5 frames/s at 30 km/h. Prices are list-price assumptions stated per row. Traffic, storage and moderation labour are in the business model, not here."
+}

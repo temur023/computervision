@@ -1,407 +1,103 @@
 {
  "name": "Tashkent crossing, 16 July 2026, 18:28",
- "source": "Dashcam footage recorded and provided by the SwarmSight team; people and plates blurred by us",
+ "source": "Dashcam footage recorded and provided by the SwarmSight team; faces and plates blurred by us",
+ "video": {
+  "file": "clip.mp4",
+  "poster": "poster.jpg",
+  "t0": 18.0,
+  "fps": 24.0,
+  "frames": 283,
+  "size": [
+   960,
+   540
+  ],
+  "webm": "clip.webm"
+ },
  "clip_seconds": [
   20.0,
   29.75
  ],
  "fps": 8.0,
- "frames": [
-  {
-   "t": 20.0,
-   "src_frame": 480,
-   "img": "f0480.jpg"
-  },
-  {
-   "t": 20.125,
-   "src_frame": 483,
-   "img": "f0483.jpg"
-  },
-  {
-   "t": 20.25,
-   "src_frame": 486,
-   "img": "f0486.jpg"
-  },
-  {
-   "t": 20.375,
-   "src_frame": 489,
-   "img": "f0489.jpg"
-  },
-  {
-   "t": 20.5,
-   "src_frame": 492,
-   "img": "f0492.jpg"
-  },
-  {
-   "t": 20.625,
-   "src_frame": 495,
-   "img": "f0495.jpg"
-  },
-  {
-   "t": 20.75,
-   "src_frame": 498,
-   "img": "f0498.jpg"
-  },
-  {
-   "t": 20.875,
-   "src_frame": 501,
-   "img": "f0501.jpg"
-  },
-  {
-   "t": 21.0,
-   "src_frame": 504,
-   "img": "f0504.jpg"
-  },
-  {
-   "t": 21.125,
-   "src_frame": 507,
-   "img": "f0507.jpg"
-  },
-  {
-   "t": 21.25,
-   "src_frame": 510,
-   "img": "f0510.jpg"
-  },
-  {
-   "t": 21.375,
-   "src_frame": 513,
-   "img": "f0513.jpg"
-  },
-  {
-   "t": 21.5,
-   "src_frame": 516,
-   "img": "f0516.jpg"
-  },
-  {
-   "t": 21.625,
-   "src_frame": 519,
-   "img": "f0519.jpg"
-  },
-  {
-   "t": 21.75,
-   "src_frame": 522,
-   "img": "f0522.jpg"
-  },
-  {
-   "t": 21.875,
-   "src_frame": 525,
-   "img": "f0525.jpg"
-  },
-  {
-   "t": 22.0,
-   "src_frame": 528,
-   "img": "f0528.jpg"
-  },
-  {
-   "t": 22.125,
-   "src_frame": 531,
-   "img": "f0531.jpg"
-  },
-  {
-   "t": 22.25,
-   "src_frame": 534,
-   "img": "f0534.jpg"
-  },
-  {
-   "t": 22.375,
-   "src_frame": 537,
-   "img": "f0537.jpg"
-  },
-  {
-   "t": 22.5,
-   "src_frame": 540,
-   "img": "f0540.jpg"
-  },
-  {
-   "t": 22.625,
-   "src_frame": 543,
-   "img": "f0543.jpg"
-  },
-  {
-   "t": 22.75,
-   "src_frame": 546,
-   "img": "f0546.jpg"
-  },
-  {
-   "t": 22.875,
-   "src_frame": 549,
-   "img": "f0549.jpg"
-  },
-  {
-   "t": 23.0,
-   "src_frame": 552,
-   "img": "f0552.jpg"
-  },
-  {
-   "t": 23.125,
-   "src_frame": 555,
-   "img": "f0555.jpg"
-  },
-  {
-   "t": 23.25,
-   "src_frame": 558,
-   "img": "f0558.jpg"
-  },
-  {
-   "t": 23.375,
-   "src_frame": 561,
-   "img": "f0561.jpg"
-  },
-  {
-   "t": 23.5,
-   "src_frame": 564,
-   "img": "f0564.jpg"
-  },
-  {
-   "t": 23.625,
-   "src_frame": 567,
-   "img": "f0567.jpg"
-  },
-  {
-   "t": 23.75,
-   "src_frame": 570,
-   "img": "f0570.jpg"
-  },
-  {
-   "t": 23.875,
-   "src_frame": 573,
-   "img": "f0573.jpg"
-  },
-  {
-   "t": 24.0,
-   "src_frame": 576,
-   "img": "f0576.jpg"
-  },
-  {
-   "t": 24.125,
-   "src_frame": 579,
-   "img": "f0579.jpg"
-  },
-  {
-   "t": 24.25,
-   "src_frame": 582,
-   "img": "f0582.jpg"
-  },
-  {
-   "t": 24.375,
-   "src_frame": 585,
-   "img": "f0585.jpg"
-  },
-  {
-   "t": 24.5,
-   "src_frame": 588,
-   "img": "f0588.jpg"
-  },
-  {
-   "t": 24.625,
-   "src_frame": 591,
-   "img": "f0591.jpg"
-  },
-  {
-   "t": 24.75,
-   "src_frame": 594,
-   "img": "f0594.jpg"
-  },
-  {
-   "t": 24.875,
-   "src_frame": 597,
-   "img": "f0597.jpg"
-  },
-  {
-   "t": 25.0,
-   "src_frame": 600,
-   "img": "f0600.jpg"
-  },
-  {
-   "t": 25.125,
-   "src_frame": 603,
-   "img": "f0603.jpg"
-  },
-  {
-   "t": 25.25,
-   "src_frame": 606,
-   "img": "f0606.jpg"
-  },
-  {
-   "t": 25.375,
-   "src_frame": 609,
-   "img": "f0609.jpg"
-  },
-  {
-   "t": 25.5,
-   "src_frame": 612,
-   "img": "f0612.jpg"
-  },
-  {
-   "t": 25.625,
-   "src_frame": 615,
-   "img": "f0615.jpg"
-  },
-  {
-   "t": 25.75,
-   "src_frame": 618,
-   "img": "f0618.jpg"
-  },
-  {
-   "t": 25.875,
-   "src_frame": 621,
-   "img": "f0621.jpg"
-  },
-  {
-   "t": 26.0,
-   "src_frame": 624,
-   "img": "f0624.jpg"
-  },
-  {
-   "t": 26.125,
-   "src_frame": 627,
-   "img": "f0627.jpg"
-  },
-  {
-   "t": 26.25,
-   "src_frame": 630,
-   "img": "f0630.jpg"
-  },
-  {
-   "t": 26.375,
-   "src_frame": 633,
-   "img": "f0633.jpg"
-  },
-  {
-   "t": 26.5,
-   "src_frame": 636,
-   "img": "f0636.jpg"
-  },
-  {
-   "t": 26.625,
-   "src_frame": 639,
-   "img": "f0639.jpg"
-  },
-  {
-   "t": 26.75,
-   "src_frame": 642,
-   "img": "f0642.jpg"
-  },
-  {
-   "t": 26.875,
-   "src_frame": 645,
-   "img": "f0645.jpg"
-  },
-  {
-   "t": 27.0,
-   "src_frame": 648,
-   "img": "f0648.jpg"
-  },
-  {
-   "t": 27.125,
-   "src_frame": 651,
-   "img": "f0651.jpg"
-  },
-  {
-   "t": 27.25,
-   "src_frame": 654,
-   "img": "f0654.jpg"
-  },
-  {
-   "t": 27.375,
-   "src_frame": 657,
-   "img": "f0657.jpg"
-  },
-  {
-   "t": 27.5,
-   "src_frame": 660,
-   "img": "f0660.jpg"
-  },
-  {
-   "t": 27.625,
-   "src_frame": 663,
-   "img": "f0663.jpg"
-  },
-  {
-   "t": 27.75,
-   "src_frame": 666,
-   "img": "f0666.jpg"
-  },
-  {
-   "t": 27.875,
-   "src_frame": 669,
-   "img": "f0669.jpg"
-  },
-  {
-   "t": 28.0,
-   "src_frame": 672,
-   "img": "f0672.jpg"
-  },
-  {
-   "t": 28.125,
-   "src_frame": 675,
-   "img": "f0675.jpg"
-  },
-  {
-   "t": 28.25,
-   "src_frame": 678,
-   "img": "f0678.jpg"
-  },
-  {
-   "t": 28.375,
-   "src_frame": 681,
-   "img": "f0681.jpg"
-  },
-  {
-   "t": 28.5,
-   "src_frame": 684,
-   "img": "f0684.jpg"
-  },
-  {
-   "t": 28.625,
-   "src_frame": 687,
-   "img": "f0687.jpg"
-  },
-  {
-   "t": 28.75,
-   "src_frame": 690,
-   "img": "f0690.jpg"
-  },
-  {
-   "t": 28.875,
-   "src_frame": 693,
-   "img": "f0693.jpg"
-  },
-  {
-   "t": 29.0,
-   "src_frame": 696,
-   "img": "f0696.jpg"
-  },
-  {
-   "t": 29.125,
-   "src_frame": 699,
-   "img": "f0699.jpg"
-  },
-  {
-   "t": 29.25,
-   "src_frame": 702,
-   "img": "f0702.jpg"
-  },
-  {
-   "t": 29.375,
-   "src_frame": 705,
-   "img": "f0705.jpg"
-  },
-  {
-   "t": 29.5,
-   "src_frame": 708,
-   "img": "f0708.jpg"
-  },
-  {
-   "t": 29.625,
-   "src_frame": 711,
-   "img": "f0711.jpg"
-  },
-  {
-   "t": 29.75,
-   "src_frame": 714,
-   "img": "f0714.jpg"
-  }
+ "analysis_t": [
+  20.0,
+  20.125,
+  20.25,
+  20.375,
+  20.5,
+  20.625,
+  20.75,
+  20.875,
+  21.0,
+  21.125,
+  21.25,
+  21.375,
+  21.5,
+  21.625,
+  21.75,
+  21.875,
+  22.0,
+  22.125,
+  22.25,
+  22.375,
+  22.5,
+  22.625,
+  22.75,
+  22.875,
+  23.0,
+  23.125,
+  23.25,
+  23.375,
+  23.5,
+  23.625,
+  23.75,
+  23.875,
+  24.0,
+  24.125,
+  24.25,
+  24.375,
+  24.5,
+  24.625,
+  24.75,
+  24.875,
+  25.0,
+  25.125,
+  25.25,
+  25.375,
+  25.5,
+  25.625,
+  25.75,
+  25.875,
+  26.0,
+  26.125,
+  26.25,
+  26.375,
+  26.5,
+  26.625,
+  26.75,
+  26.875,
+  27.0,
+  27.125,
+  27.25,
+  27.375,
+  27.5,
+  27.625,
+  27.75,
+  27.875,
+  28.0,
+  28.125,
+  28.25,
+  28.375,
+  28.5,
+  28.625,
+  28.75,
+  28.875,
+  29.0,
+  29.125,
+  29.25,
+  29.375,
+  29.5,
+  29.625,
+  29.75
  ],
  "frame_scale": 0.75,
  "telemetry": [

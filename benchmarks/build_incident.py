@@ -1,7 +1,7 @@
 """Package the Tashkent dashcam case for the Guardian page: anonymised frames, telemetry, calibration, annotations.
 
 Input: the team's dashcam clip (Tashkent, 2026-07-16 18:27:53 local time).  Output (demo/incident/):
-  frames/*.jpg  20.0-29.75 s of the clip at 8 frames/s, 960x540.  Faces (top of every person box) and plate bands
+  clip.mp4      18.0 s to the moment of impact (29.75 s), 24 frames/s, 960x540, H.264.  Faces (top of every person box) and plate bands
                 (lower part of every vehicle box, full width) are blurred, using detections from the frame and its
                 four neighbours so that a missed detection in one frame does not leak a face or a plate (hackathon
                 rule: no faces or plates of people who did not consent).  The replay stops at the
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 import cv2
@@ -27,6 +28,7 @@ from swarmsight.detector import YoloOnnxDetector, MODELS_DIR
 from swarmsight.privacy import _blur
 
 FPS_SRC = 24.0
+V0 = 18.0  # the video starts here; analysis from T0
 T0, T1, STEP = 20.0, 29.75, 0.125
 OUT_W = 960
 
@@ -63,39 +65,49 @@ def main():
     ap.add_argument("--out", default="demo/incident")
     args = ap.parse_args()
     out = Path(args.out)
-    (out / "frames").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
     det = YoloOnnxDetector(str(MODELS_DIR / "yolo11n_coco.onnx"), conf=0.1)
     cap = cv2.VideoCapture(args.video)
-    frames = []
-    for k, t in enumerate(np.arange(T0, T1 + 1e-6, STEP)):
-        fi = int(round(t * FPS_SRC))
-        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
+    f0, f1 = int(round(V0 * FPS_SRC)), IMPACT_FRAME
+    cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, f0 - 2))
+    raw, boxes = {}, {}
+    for fi in range(max(0, f0 - 2), f1 + 3):  # read sequentially, detect once per frame
         ok, img = cap.read()
         if not ok:
             break
-        safe = img.copy()
+        d = det(img)
+        boxes[fi] = [(d.label(i), d.xyxy[i]) for i in range(len(d))]
+        if f0 <= fi <= f1:
+            raw[fi] = img
+    h0, w0 = next(iter(raw.values())).shape[:2]
+    oh = int(round(h0 * OUT_W / w0)) // 2 * 2
+    enc = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{OUT_W}x{oh}",
+                            "-r", str(FPS_SRC), "-i", "-", "-c:v", "libx264", "-preset", "slow", "-crf", "24", "-pix_fmt", "yuv420p",
+                            "-movflags", "+faststart", "-an", str(out / "clip.mp4")], stdin=subprocess.PIPE)
+    for fi in range(f0, f1 + 1):
+        safe = raw[fi].copy()
         for g in range(fi - 2, fi + 3):  # union of detections over neighbouring frames
-            cap.set(cv2.CAP_PROP_POS_FRAMES, g)
-            ok2, nb = cap.read()
-            if not ok2:
-                continue
-            d = det(nb)
-            for i in range(len(d)):
-                x1, y1, x2, y2 = d.xyxy[i]
+            for cls, (x1, y1, x2, y2) in boxes.get(g, []):
                 w, h = x2 - x1, y2 - y1
-                if d.label(i) == "person":  # face: top of the person box
+                if cls == "person":  # face: top of the person box
                     _blur(safe, x1 - 0.12 * w, y1 - 0.06 * h, x2 + 0.12 * w, y1 + 0.3 * h)
-                elif d.label(i) in ("car", "truck", "bus"):  # plate band, full width (a box cut by the frame edge hides where the plate is)
+                elif cls in ("car", "truck", "bus"):  # plate band, full width (a box cut by the frame edge hides where the plate is)
                     _blur(safe, x1, y1 + 0.55 * h, x2, y2 + 0.04 * h)
-        s = OUT_W / img.shape[1]
-        name = f"f{fi:04d}.jpg"
-        cv2.imwrite(str(out / "frames" / name), cv2.resize(safe, (OUT_W, int(round(img.shape[0] * s))), interpolation=cv2.INTER_AREA),
-                    [cv2.IMWRITE_JPEG_QUALITY, 82])
-        frames.append({"t": round(float(t), 3), "src_frame": fi, "img": name})
+        small = cv2.resize(safe, (OUT_W, oh), interpolation=cv2.INTER_AREA)
+        if fi == f0:
+            cv2.imwrite(str(out / "poster.jpg"), small, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        enc.stdin.write(small.tobytes())
+    enc.stdin.close()
+    enc.wait()
+    # VP9/WebM copy for browsers built without H.264 (e.g. open-source Chromium)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(out / "clip.mp4"), "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "37",
+                    "-row-mt", "1", "-deadline", "good", "-cpu-used", "2", "-an", str(out / "clip.webm")], check=True)
+    analysis = [round(float(t), 3) for t in np.arange(T0, T1 + 1e-6, STEP)]
     scene = {
         "name": "Tashkent crossing, 16 July 2026, 18:28",
-        "source": "Dashcam footage recorded and provided by the SwarmSight team; people and plates blurred by us",
-        "clip_seconds": [T0, T1], "fps": 1 / STEP, "frames": frames, "frame_scale": OUT_W / 1280,
+        "source": "Dashcam footage recorded and provided by the SwarmSight team; faces and plates blurred by us",
+        "video": {"file": "clip.mp4", "webm": "clip.webm", "poster": "poster.jpg", "t0": V0, "fps": FPS_SRC, "frames": f1 - f0 + 1, "size": [OUT_W, oh]},
+        "clip_seconds": [T0, T1], "fps": 1 / STEP, "analysis_t": analysis, "frame_scale": OUT_W / 1280,
         "telemetry": [{"t": t, "lat": la, "lon": lo, "kmh": v} for t, la, lo, v in TELEMETRY],
         "telemetry_note": "read by us from the dashcam overlay (GPS updates once a second, 5 decimals, about 1 m)",
         "calibration": CALIBRATION,
@@ -104,7 +116,7 @@ def main():
         "events": {"impact_t": round(IMPACT_FRAME / FPS_SRC, 3), "signal_visible_t": round(LIGHT_FRAME / FPS_SRC, 3)},
     }
     (out / "scene.json").write_text(json.dumps(scene, indent=1))
-    print("frames", len(frames), "->", out)
+    print("video", f1 - f0 + 1, "frames ->", out / "clip.mp4")
 
 
 if __name__ == "__main__":

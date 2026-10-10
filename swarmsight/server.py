@@ -1217,7 +1217,7 @@ def demo_basemap(name: str):
 
 if (DEMO_DIR / "v2xsim" / "frames").exists():
     app.mount("/demo/v2xsim/frames", StaticFiles(directory=str(DEMO_DIR / "v2xsim" / "frames")), name="demo")
-if (DEMO_DIR / "incident" / "frames").exists():
-    app.mount("/demo/incident/frames", StaticFiles(directory=str(DEMO_DIR / "incident" / "frames")), name="incident")
+if (DEMO_DIR / "incident").exists():
+    app.mount("/demo/incident", StaticFiles(directory=str(DEMO_DIR / "incident")), name="incident")
 if WEB_DIR.exists():
     app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

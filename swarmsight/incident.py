@@ -96,20 +96,30 @@ def reconstruct(scene_dir: str | Path, detector) -> dict:
     scene_dir = Path(scene_dir)
     sc = json.loads((scene_dir / "scene.json").read_text())
     cal = sc["calibration"]
-    k = sc["frame_scale"]
+    k_scale = sc["frame_scale"]
     ego = EgoPath(sc["telemetry"])
     t_imp = sc["events"]["impact_t"]
     node = CameraNode("dashcam", None, track_buffer=10)
     frames, per_track = [], {}
-    for fr in sc["frames"]:
-        img = cv2.imread(str(scene_dir / "frames" / fr["img"]))
-        node.process(detector(img), fr["t"])
-        out = []
-        for tr in node.last_tracks:
-            out.append({"id": int(tr["id"]), "cls": tr["cls"], "bbox": tr["bbox"]})
-            if tr["cls"] in ("car", "truck", "bus"):
-                per_track.setdefault(int(tr["id"]), []).append((fr["t"], [v / k for v in tr["bbox"]]))
-        frames.append({"t": fr["t"], "img": fr["img"], "tracks": out})
+    vid = sc["video"]
+    cap = cv2.VideoCapture(str(scene_dir / vid["file"]))
+    want = {int(round((t - vid["t0"]) * vid["fps"])): t for t in sc["analysis_t"]}
+    k = 0
+    while want:
+        ok, img = cap.read()
+        if not ok:
+            break
+        if k in want:
+            t = want.pop(k)
+            node.process(detector(img), t)
+            out = []
+            for tr in node.last_tracks:
+                out.append({"id": int(tr["id"]), "cls": tr["cls"], "bbox": tr["bbox"]})
+                if tr["cls"] in ("car", "truck", "bus"):
+                    per_track.setdefault(int(tr["id"]), []).append((t, [v / k_scale for v in tr["bbox"]]))
+            frames.append({"t": t, "tracks": out})
+        k += 1
+    cap.release()
 
     # the car ahead: the vehicle track still followed just before impact, nearest to the centre of our lane;
     # earlier tracks of the same car (the tracker loses it while it passes the traffic officer) are chained on
@@ -224,7 +234,9 @@ def reconstruct(scene_dir: str | Path, detector) -> dict:
         f["ego_kmh"] = round(ego.speed(t) * 3.6)
         f["lead"] = ll(lead_at(t)) if lt[0] <= t <= t_imp else None
         a = next((a for a in ann if abs(a["t"] - t) < 0.07), None)
-        f["moto_box"] = [round(v * k, 1) for v in a["box"]] if a else None
+        f["moto_box"] = [round(v * k_scale, 1) for v in a["box"]] if a else None
+        f["ego_xy"] = [round(float(v), 2) for v in ego.pos(t)]
+        f["lead_xy"] = [round(float(v), 2) for v in lead_at(t)] if lt[0] <= t <= t_imp else None
     paths = {
         "ego": [ll(ego.pos(t)) for t in np.arange(sc["clip_seconds"][0], t_imp + 0.75, 0.25)],
         "lead": [ll(p) for p in lp[lt <= t_imp]] + [ll(lead_at(t_imp))],
@@ -234,8 +246,13 @@ def reconstruct(scene_dir: str | Path, detector) -> dict:
     }
     return {
         "name": sc["name"], "source": sc["source"], "frames": frames, "fps": sc["fps"], "impact_t": t_imp,
+        "video": sc["video"], "calibration": cal, "origin": [ego.lat0, ego.lon0],
+        "ego_dir": [round(float(v), 5) for v in ego.dir], "ego_right": [round(float(v), 5) for v in ego.right],
+        "ego_track": [[round(float(t), 2), *[round(float(v), 2) for v in ego.pos(t)], round(ego.speed(t) * 3.6)]
+                      for t in np.arange(sc["video"]["t0"], t_imp + 1e-6, 0.125)],
         "impact": ll(impact), "paths": paths, "bearing_deg": round(math.degrees(ego.bearing), 1),
         "motorcycle": {"speed_kmh": round(v_moto * 3.6), "range_kmh": [round(v_moto * 3.6 * 0.8), round(v_moto * 3.6 * 1.2)],
+                       "speed_ms": round(v_moto, 2), "dir": [round(float(v), 5) for v in m_dir], "impact_xy": [round(float(v), 2) for v in impact],
                        "visible_from_t": visible_from, "visible_s": round(t_imp - visible_from, 2),
                        "position_at": {str(s): ll(moto_at(t_imp - s)) for s in (1, 2, 3)}},
         "lead_car": {"track_ids": sorted(used), "speed_kmh": round(lead_speed * 3.6), "observations": len(lead),

@@ -1,0 +1,78 @@
+{
+  "model": "road_damage_yolo11n.onnx",
+  "imgsz": 512,
+  "n_test_images": 1500,
+  "test": {
+    "map50": 0.48043516405069875,
+    "map": 0.22905015800621137,
+    "precision": 0.5752998844866895,
+    "recall": 0.4598835058775653,
+    "per_class": {
+      "longitudinal_crack": {
+        "ap50": 0.4551366457670034,
+        "ap": 0.20923744150454548
+      },
+      "transverse_crack": {
+        "ap50": 0.44791070129449695,
+        "ap": 0.1742233260614078
+      },
+      "alligator_crack": {
+        "ap50": 0.5211430864103996,
+        "ap": 0.24642832234702902
+      },
+      "pothole": {
+        "ap50": 0.49755022273089494,
+        "ap": 0.2863115421118631
+      }
+    }
+  },
+  "countries": [
+    "China_MotorBike",
+    "Czech",
+    "India",
+    "Japan",
+    "Norway",
+    "United_States"
+  ],
+  "per_country": {
+    "China_MotorBike": {
+      "n": 250,
+      "map50": 0.702525234711392
+    },
+    "Czech": {
+      "n": 250,
+      "map50": 0.22699001409741318
+    },
+    "India": {
+      "n": 250,
+      "map50": 0.13735342358702668
+    },
+    "Japan": {
+      "n": 250,
+      "map50": 0.43192392978180794
+    },
+    "Norway": {
+      "n": 250,
+      "map50": 0.13291353837485695
+    },
+    "United_States": {
+      "n": 250,
+      "map50": 0.5830983113412355
+    }
+  },
+  "robustness": {
+    "night (gamma 2.2, -60% light, noise)": {
+      "map50": 0.20207375333650715
+    },
+    "rain (streaks + haze)": {
+      "map50": 0.2525572691284259
+    },
+    "motion blur (9 px)": {
+      "map50": 0.0796818800726532
+    },
+    "low-quality JPEG (q=15)": {
+      "map50": 0.3189241777731796
+    }
+  },
+  "note": "Held-out test split of the RDD2022 HF export (never used for training or model selection). AP computed by Ultralytics val on the exported ONNX model, conf 0.001, IoU 0.6. Robustness rows apply synthetic perturbations to the same images."
+}
